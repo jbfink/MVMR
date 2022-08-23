@@ -1,0 +1,58 @@
+
+
+
+
+
+${DIRECTORY}/MR_RESULTS.LD_PRUNED_${LD_THRESHOLD_PRUNING}_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}.txt
+
+
+
+
+
+
+cd ${ROOT_DIR}PURE/MVMR_consortia/
+
+script_log=$(mktemp script_log.XXXXXX)
+
+for SUFFIX in NO_MHC_MISSENSE_SPLICING # NO_MHC NO_MHC_MISSENSE NO_MHC_SPLICING
+do
+
+  ROOT_OUTPUT_DIR=${ROOT_DIR}PURE/MVMR_consortia/${SUFFIX}/
+  mkdir -p $ROOT_OUTPUT_DIR
+  OUTPUT_DIR=${ROOT_OUTPUT_DIR}${OUTCOME}/
+  mkdir -p $OUTPUT_DIR
+
+  for PVALUE_THRESHOLD in 0.000005 0.01 0.001 0.0001 0.00001 0.000001 0.0000001 0.00000001 0.00000005
+  do
+    for POPULATION in EUROPEAN METAL_LATIN_EUROPEAN_PERSIAN
+    do
+      MODEL=0
+      for EXPOSURES_FILE in $(ls $(echo $LIST_EXPOSURE_MODEL | sed 's/.txt/_*/' -))
+      do
+        count=0
+        for ROW in $(eval "echo {1..$(wc -l $EXPOSURES_FILE | awk '{print $1}' -)}")
+        do
+            MODEL=$((MODEL+1))
+            
+            RUN_PARALLEL 0.95 0.95 288 6 "$script_log" "$SCRIPT" $SUFFIX $PANEL $ASSAY $GENE $PVALUE_THRESHOLD $CIS_WINDOW $LD_THRESHOLD_PRUNING $OUTCOME $ROOT_DIR $MODEL $POPULATION
+
+        done # END ROW LOOP
+      done # END EXPOSURES_FILE LOOP
+    done # END POPULATION LOOP
+  done # END PVALUE_THRESHOLD LOOP
+done # END SUFFIX LOOP
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
