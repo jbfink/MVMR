@@ -16,6 +16,47 @@
 # CLUMPING
 # ...
 
+
+
+
+ADD FINNGEN/UKB AS OUTCOME
+
+/genetics/PAREG/common/Public_Data_Organized/GRS_FORMATTED_MC_2018_03_12/FinnGen_R5/
+
+/genetics/PAREG/common/Public_Data_Organized/GRS_FORMATTED_MC_2018_03_12/UKB_ZHOU_SAIGE_2019/
+
+IF OUTCOME NOT IN GRS_FORMATING_FILE CHECK UKB OR FINNGEN
+FORMAT IS NOT THE SAME AS 4_final
+
+
+
+# FINNGEN
+"AB1_ERYSIPELAS"
+# UKB
+"451"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 echo "Started IVs MVMR at: "$(date)
 SECONDS=0
 
@@ -45,8 +86,8 @@ POPULATION="EUROPEAN"
 ROOT_DIR="/storage/genetics_work2/perrotn/"
 GRS_FORMATING_FILE="/storage/genetics_work2/perrotn/PURE/MVMR_BM_consortia/GRS_FORMATTING_FILE.G7PfJt"
 LIST_EXPOSURES="/storage/genetics_work2/perrotn/PURE/MVMR_BM_consortia/F11_EUROPEAN_CMET_F7_F7_vs_VENOUS_THROMBOEMBOLISM_GBMI_EUR_2021.txt"
-OUTCOME="VENOUS_THROMBOEMBOLISM_GBMI_EUR_2021"
-MODEL="F11_EUROPEAN_CMET_F7_F7_vs_VENOUS_THROMBOEMBOLISM_GBMI_EUR_2021.txt"
+OUTCOME="AB1_ERYSIPELAS"
+MODEL="F11_EUROPEAN_CMET_F7_F7_vs_VENOUS_THROMBOEMBOLISM_GBMI_EUR_2021"
 ##############
 
 echo "SUFFIX:" $SUFFIX
@@ -70,9 +111,15 @@ ROOT_OUTPUT_DIR=${ROOT_DIR}PURE/MVMR_BM_consortia/${SUFFIX}/
 IVs_PURE=/storage/genetics_work2/perrotn/PURE/MR_INSTRUMENTS_V5/PURE_MR_IVs_PANEL_${PANEL}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${SUFFIX}
 GRS_DIR="/genetics/PAREG/common/Public_Data_Organized/GWAS_FORMATTING_2022_02_02/"
 plink2="/genetics/PAREG/common/PURE_DATA/MR_INSTRUMENTS/2020_05_06/plink"
+ALL_CIS_PQTL_BM=${ROOT_DIR}PURE/BM_BM_MR_V3/${SUFFIX}/PRIO_F11/${PANEL}/${ASSAY}/CIS_pQTLS_OUT_${POPULATION}_PANEL_${PANEL}_ASSAY_${ASSAY}_GENE_${GENE}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${SUFFIX}_FORMATTED
 
-PURE_GWAS_DIR1="/genetics/PAREG/common/PURE_DATA/BIOMARKERS/PQTLS_2021_06_02/"
-PURE_GWAS_DIR2="/genetics/PAREG/common/PURE_DATA/BIOMARKERS/PQTLS_2020_12_20/"
+FINNGEN_DIR="/genetics/PAREG/common/Public_Data_Organized/GRS_FORMATTED_MC_2018_03_12/FinnGen_R5/"
+UKB_DIR="/genetics/PAREG/common/Public_Data_Organized/GRS_FORMATTED_MC_2018_03_12/UKB_ZHOU_SAIGE_2019/"
+
+MANIFEST_FINNGEN="/genetics/PAREG/common/Public_Data_Organized/Raw/FINNGEN_R5/R5_manifest.tsv"
+MANIFEST_UKB="/genetics/PAREG/perrotn/UKB_ZHOU/UKB_phenotype-information.txt"
+
+
 SAMPLE_FILE="/genetics/PAREG/perrotn/PURE/PURE_PQTL_SAMPLE_SIZES_2021_06_08.txt"
 
 mkdir -p $ROOT_OUTPUT_DIR
@@ -149,20 +196,15 @@ do
         POPULATION_EXP=$(awk 'BEGIN{FS=OFS="\t"}NR>1 && $1=="'$EXPOSURE_MODEL'"{print $2}' $LIST_EXPOSURES)
         PANEL_EXP=$(awk 'BEGIN{FS=OFS="\t"}NR>1 && $1=="'$EXPOSURE_MODEL'"{print $3}' $LIST_EXPOSURES)
         ASSAY_EXP=$(awk 'BEGIN{FS=OFS="\t"}NR>1 && $1=="'$EXPOSURE_MODEL'"{print $4}' $LIST_EXPOSURES)
-        GENE_EXP=$(awk 'BEGIN{FS=OFS="\t"}NR>1 && $1=="'$EXPOSURE_MODEL'"{print $5}' $LIST_EXPOSURES)
 
 
-        if [ -f ${PURE_GWAS_DIR1}${PANEL_EXP}/${POPULATION_EXP}.${PANEL_EXP}.${ASSAY_EXP}.summary_stats.txt.gz ]; then
-            SUMSTAT_FILE=${PURE_GWAS_DIR1}${PANEL_EXP}/${POPULATION_EXP}.${PANEL_EXP}.${ASSAY_EXP}.summary_stats.txt.gz
-        else 
-            if [ -f ${PURE_GWAS_DIR2}${PANEL_EXP}/${POPULATION_EXP}.${PANEL_EXP}.${ASSAY_EXP}.summary_stats.txt.gz ]; then
-                SUMSTAT_FILE=${PURE_GWAS_DIR2}${PANEL_EXP}/${POPULATION_EXP}.${PANEL_EXP}.${ASSAY_EXP}.summary_stats.txt.gz
-            else
-                echo "ERROR NO SUMMARY STATISTIC AVAILABLE"
-                echo $POPULATION_EXP $ASSAY_EXP $GENE >> NO_SUM_STAT
-                exit 1
-            fi
+        if [ $(awk 'BEGIN{FS=OFS="\t"}$1=="'$EXPOSURE_MODEL'"{print $1}' $ALL_CIS_PQTL_BM | wc -l) -eq 0 ]
+        then
+            echo "ERROR NO SUMMARY STATISTIC AVAILABLE"
+            echo $POPULATION_EXP $ASSAY_EXP $GENE >> NO_SUM_STAT
+            exit 1
         fi
+
 
         if [ $POPULATION_EXP == "METAL_LATIN_EUROPEAN_PERSIAN" ] || [ $POPULATION_EXP == "METAL_ALL_ETHNICITIES" ] ; then
             if [ $POPULATION_EXP == "METAL_LATIN_EUROPEAN_PERSIAN" ] ; then
@@ -184,62 +226,16 @@ do
         N_CASE_EXPOSURE_MODEL="NA"
         N_CONTROL_EXPOSURE_MODEL="NA"
 
-
-        # HEAD_SS=$(gzip -cd $SUMSTAT_FILE | head -n 1 -)
-
-        # unset COL_NUM_EXP_MOD
-        # declare -A COL_NUM_EXP_MOD
-        # count=0
-        # for i in $HEAD_SS; do
-        # count=$((count+1))
-        # COL_NUM_EXP_MOD[$i]=$count
-        # done
-
-
-        # gzip -cd $SUMSTAT_FILE | awk 'BEGIN{FS=OFS="\t"}NR>1 && (length($('${COL_NUM_EXP_MOD["ref"]}'))+length($('${COL_NUM_EXP_MOD["alt"]}'))==2) && $('${COL_NUM_EXP_MOD["beta_raw"]}')!=0{print "'$EXPOSURE_MODEL'",$('${COL_NUM_EXP_MOD["chr"]}')"_"$('${COL_NUM_EXP_MOD["pos"]}')"_"$('${COL_NUM_EXP_MOD["ref"]}')"_"$('${COL_NUM_EXP_MOD["alt"]}'),$('${COL_NUM_EXP_MOD["chr"]}'), $('${COL_NUM_EXP_MOD["pos"]}'),$('${COL_NUM_EXP_MOD["ref"]}'),$('${COL_NUM_EXP_MOD["alt"]}'),$('${COL_NUM_EXP_MOD["beta_raw"]}'),$('${COL_NUM_EXP_MOD["se"]}'),$('${COL_NUM_EXP_MOD["study_AF"]}'),$('${COL_NUM_EXP_MOD["pvalue"]}'),"NA","NA","'$SAMPLE_SIZE_EXPOSURE_MODEL'", "'$N_CASE_EXPOSURE_MODEL'", "'$N_CONTROL_EXPOSURE_MODEL'"}' - | awk 'BEGIN{FS=OFS="\t"} NR==FNR {snp[$1,$2,$3,$4]=1;snp[$1,$2,$4,$3]=1;next}snp[$3,$4,$5,$6]==1{print}' list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} - > ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp
-
-
-
-        HEAD_SS=$(gzip -cd $SUMSTAT_FILE | head -n 1 -)
-
+     
         unset COL_NUM_EXP_MOD
         declare -A COL_NUM_EXP_MOD
         count=0
-        for i in $HEAD_SS; do
+        for i in $(head -n 1 $ALL_CIS_PQTL_BM); do
         count=$((count+1))
         COL_NUM_EXP_MOD[$i]=$count
         done
 
-
-        gzip -cd $SUMSTAT_FILE | awk 'BEGIN{FS=OFS="\t"}NR>1 && (length($('${COL_NUM_EXP_MOD["ref"]}'))+length($('${COL_NUM_EXP_MOD["alt"]}'))==2) && $('${COL_NUM_EXP_MOD["beta_raw"]}')!=0{print "'$EXPOSURE_MODEL'",$('${COL_NUM_EXP_MOD["chr"]}')"_"$('${COL_NUM_EXP_MOD["pos"]}')"_"$('${COL_NUM_EXP_MOD["ref"]}')"_"$('${COL_NUM_EXP_MOD["alt"]}'),$('${COL_NUM_EXP_MOD["chr"]}'), $('${COL_NUM_EXP_MOD["pos"]}'),$('${COL_NUM_EXP_MOD["ref"]}'),$('${COL_NUM_EXP_MOD["alt"]}'),$('${COL_NUM_EXP_MOD["beta_raw"]}'),$('${COL_NUM_EXP_MOD["se"]}'),$('${COL_NUM_EXP_MOD["study_AF"]}'),$('${COL_NUM_EXP_MOD["pvalue"]}'),"NA","NA","'$SAMPLE_SIZE_EXPOSURE_MODEL'", "'$N_CASE_EXPOSURE_MODEL'", "'$N_CONTROL_EXPOSURE_MODEL'"}' - | awk 'BEGIN{FS=OFS="\t"} NR==FNR {snp[$1,$2,$3,$4]=1;snp[$1,$2,$4,$3]=1;next}snp[$3,$4,$5,$6]==1{print}' list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} - > ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp
-
-
-
-
-
-${ROOT_DIR}PURE/BM_BM_MR_V3/${SUFFIX}/PRIO_F11/${PANEL}/${ASSAY}/CIS_pQTLS_OUT_${POPULATION}_PANEL_${PANEL}_ASSAY_${ASSAY}_GENE_${GENE}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${SUFFIX}_FORMATTED
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      awk 'BEGIN{FS=OFS="\t"}NR>1 && $('${COL_NUM_EXP_MOD["Phenotype"]}')=="'$EXPOSURE_MODEL'" && (length($('${COL_NUM_EXP_MOD["other_allele"]}'))+length($('${COL_NUM_EXP_MOD["effect_allele"]}'))==2) && $('${COL_NUM_EXP_MOD["beta"]}')!=0{print "'$EXPOSURE_MODEL'",$('${COL_NUM_EXP_MOD["chr"]}')"_"$('${COL_NUM_EXP_MOD["pos"]}')"_"$('${COL_NUM_EXP_MOD["other_allele"]}')"_"$('${COL_NUM_EXP_MOD["effect_allele"]}'),$('${COL_NUM_EXP_MOD["chr"]}'), $('${COL_NUM_EXP_MOD["pos"]}'),$('${COL_NUM_EXP_MOD["other_allele"]}'),$('${COL_NUM_EXP_MOD["effect_allele"]}'),$('${COL_NUM_EXP_MOD["beta"]}'),$('${COL_NUM_EXP_MOD["se"]}'),$('${COL_NUM_EXP_MOD["eaf"]}'),$('${COL_NUM_EXP_MOD["pval"]}'),"NA","NA","'$SAMPLE_SIZE_EXPOSURE_MODEL'", "'$N_CASE_EXPOSURE_MODEL'", "'$N_CONTROL_EXPOSURE_MODEL'"}' $ALL_CIS_PQTL_BM | awk 'BEGIN{FS=OFS="\t"} NR==FNR {snp[$1,$2,$3,$4]=1;snp[$1,$2,$4,$3]=1;next}snp[$3,$4,$5,$6]==1{print}' list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} - > ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp
 
     else # EXPOSURE NOT BM
 
@@ -306,14 +302,43 @@ done # END EXPOSURE_MODEL LOOP
 echo "" | awk 'BEGIN{FS=OFS="\t";print "Phenotype","SNP","chr","pos","beta","se","effect_allele","other_allele","eaf","pval","units","gene","samplesize","ncase","ncontrol"}' > $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
 
 
-if [ -f ${GRS_DIR}${OUTCOME}/4_final.txt.gz ]; then
+
+
+
+if [ -f /genetics/PAREG/common/Public_Data_Organized/GRS_FORMATTED_MC_2018_03_12/UKB_ZHOU_SAIGE_2019/PheCode_${OUTCOME}_SAIGE_MACge20/8_final.gz ]
+then
+
+
+
+
+
+
+elif [ -f /genetics/PAREG/common/Public_Data_Organized/GRS_FORMATTED_MC_2018_03_12/FinnGen_R5/finngen_R5_${OUTCOME}/8_final.gz ]
+then
+
+
+elif [-f ${GRS_DIR}${OUTCOME}/4_final.txt.gz ] 
+then
     SUMSTAT_FILE=${GRS_DIR}${OUTCOME}/4_final.txt.gz
+
+
 else
   echo $OUTCOME | cat - >> ${ROOT_OUTPUT_DIR}MISSING_OUTCOMES
   cd $ROOT_OUTPUT_DIR || exit 1
   rm -r $OUTPUT_DIR
   exit 1
-fi
+
+
+
+
+fi # END IF OUTCOME IN UKB ZHOU
+
+
+
+
+
+
+
 
 HEAD_SS=$(gzip -cd $SUMSTAT_FILE | head -n 1 -)
 
@@ -880,6 +905,10 @@ $LIST_OUTCOMES \
 > /genetics/PAREG/perrotn/scripts/output_nohup/IVs_BM_MVMR_PURE_parallel.out &
 ########################################################################################################################################
 # in progress xxxxx
+
+
+grep -cw "EUROPEAN_CMET_F7_F7" /storage/genetics_work2/perrotn/PURE/BM_BM_MR_V3/NO_MHC_MISSENSE_SPLICING/PRIO_F11/CMET/F11/CIS_pQTLS_OUT_EUROPEAN_PANEL_CMET_ASSAY_F11_GENE_F11_CIS_200000_PVALUE_0.01_NO_MHC_MISSENSE_SPLICING_FORMATTED
+
 
 # kill $(ps -aux | grep "IVs_BM_MVMR_PURE_parallel.sh" | awk '{print $2}' -)
 # kill $(ps -aux | grep "IVs_BM_MVMR_PURE.sh" | awk '{print $2}' -)

@@ -1,12 +1,12 @@
 #!/bin/bash
 
-# /genetics/PAREG/perrotn/scripts/MVMR_PURE.sh
+# /genetics/PAREG/perrotn/scripts/MVMR_BM_PURE.sh
 
 ##########################################
-##### MVMR WITH IVs PURE x CONSORTIA #####
+##### MVMR_BM WITH IVs PURE x CONSORTIA #####
 ##########################################
 
-echo "Started MVMR at: "$(date)
+echo "Started MVMR_BM at: "$(date)
 SECONDS=0
 
 # export TMPDIR=/genetics_work/perrotn/temp
@@ -35,8 +35,8 @@ POPULATION=${11}
 # GENE="F11"
 # POPULATION="EUROPEAN"
 # ROOT_DIR="/storage/genetics_work2/perrotn/"
-# OUTCOME="all_stroke_european_GIGASTROKE_2022"
-# MODEL="FXI_ISCHEMIC_STROKE_VS_ALL_STROKE"
+# OUTCOME="VENOUS_THROMBOEMBOLISM_GBMI_EUR_2021"
+# MODEL="F11_EUROPEAN_CMET_CCL14_CCL14_vs_VENOUS_THROMBOEMBOLISM_GBMI_EUR_2021"
 
 
 echo "SUFFIX:" $SUFFIX
@@ -52,7 +52,7 @@ echo "MODEL:" $MODEL
 echo "POPULATION:" $POPULATION
 
 
-ROOT_OUTPUT_DIR=${ROOT_DIR}PURE/MVMR_consortia/${SUFFIX}/
+ROOT_OUTPUT_DIR=${ROOT_DIR}PURE/MVMR_BM_consortia/${SUFFIX}/
 RUN_MR="/genetics/PAREG/perrotn/automated_scripts/MVMR.r"
 
 echo $OUTCOME
@@ -105,7 +105,8 @@ EXPOSURES=${DIRECTORY}/EXPOSURES.LD_PRUNED_${LD_THRESHOLD_PRUNING}_${POPULATION}
 OUTCOME=${DIRECTORY}/OUTCOME.LD_PRUNED_${LD_THRESHOLD_PRUNING}_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_chr_pos
 
 OUTPUT_FILE=${DIRECTORY}/MR_RESULTS.LD_PRUNED_${LD_THRESHOLD_PRUNING}_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}.txt
-Rscript $RUN_MR ${EXPOSURES} ${OUTCOME} ${OUTPUT_FILE} ${POPULATION} ${PANEL} ${ASSAY} ${GENE} # exposure outcome directory output_file
+Rscript $RUN_MR --exposures ${EXPOSURES} --outcome ${OUTCOME} --out ${OUTPUT_FILE} --pop ${POPULATION} --panel ${PANEL} --assay ${ASSAY} --gene ${GENE} --presso_all TRUE
+
 
 rm $EXPOSURES $OUTCOME
 
@@ -121,9 +122,8 @@ PANEL=$4
 ASSAY=$5
 GENE=$6
 ROOT_DIR=$7
-OUTCOME=$8
-MODEL=$9
-
+LIST_EXPOSURES=$8
+LIST_OUTCOMES=$9
 
 echo "SCRIPT:" $SCRIPT
 echo "CIS_WINDOW:" $CIS_WINDOW
@@ -132,8 +132,6 @@ echo "PANEL:" $PANEL
 echo "ASSAY:" $ASSAY
 echo "GENE:" $GENE
 echo "ROOT_DIR:" $ROOT_DIR
-echo "OUTCOME:" $OUTCOME
-
 
 export TMPDIR=${ROOT_DIR}tmp
 
@@ -230,30 +228,46 @@ RUN_PARALLEL () {
 } # END RUN_PARALLEL FUNCTION
 
 
-cd ${ROOT_DIR}PURE/MVMR_consortia/
+cd ${ROOT_DIR}PURE/MVMR_BM_consortia/
 
 script_log=$(mktemp script_log.XXXXXX)
 
 N_CPU=$(nproc)
 
-for SUFFIX in NO_MHC_MISSENSE_SPLICING # NO_MHC NO_MHC_MISSENSE NO_MHC_SPLICING
+# TEST
+# OUTCOME="CAD_cardiogram_c4d_ukb_2017"
+# EXPOSURE="EUROPEAN_CMET_CCL14_CCL14"
+for OUTCOME in $(awk 'BEGIN{FS=OFS="\t"}NR>1{print $1}' $LIST_OUTCOMES)
 do
 
-  ROOT_OUTPUT_DIR=${ROOT_DIR}PURE/MVMR_consortia/${SUFFIX}/
-  mkdir -p $ROOT_OUTPUT_DIR
-  OUTPUT_DIR=${ROOT_OUTPUT_DIR}${OUTCOME}/
-  mkdir -p $OUTPUT_DIR
+  echo "OUTCOME:" $OUTCOME
 
-  for PVALUE_THRESHOLD in 0.01 # 0.000005 0.001 0.0001 0.00001 0.000001 0.0000001 0.00000001 0.00000005
+  for EXPOSURE in $(awk 'BEGIN{FS=OFS="\t"}NR>1{print $1}' $LIST_EXPOSURES)
   do
-    for POPULATION in EUROPEAN METAL_LATIN_EUROPEAN_PERSIAN
+
+    echo "EXPOSURE:" $EXPOSURE
+    MODEL=$(echo $ASSAY"_"$EXPOSURE"_vs_"$OUTCOME)
+    echo "MODEL:" $MODEL
+
+    for SUFFIX in NO_MHC_MISSENSE_SPLICING # NO_MHC NO_MHC_MISSENSE NO_MHC_SPLICING
     do
 
-            RUN_PARALLEL 0.95 0.95 ${N_CPU} 6 "$script_log" "$SCRIPT" $SUFFIX $PANEL $ASSAY $GENE $PVALUE_THRESHOLD $CIS_WINDOW $LD_THRESHOLD_PRUNING $OUTCOME $ROOT_DIR $MODEL $POPULATION
+      ROOT_OUTPUT_DIR=${ROOT_DIR}PURE/MVMR_BM_consortia/${SUFFIX}/
+      mkdir -p $ROOT_OUTPUT_DIR
+      OUTPUT_DIR=${ROOT_OUTPUT_DIR}${OUTCOME}/
+      mkdir -p $OUTPUT_DIR
 
-    done # END POPULATION LOOP
-  done # END PVALUE_THRESHOLD LOOP
-done # END SUFFIX LOOP
+      for PVALUE_THRESHOLD in 0.01 # 0.000005  0.001 0.0001 0.00001 0.000001 0.0000001 0.00000001 0.00000005
+      do
+        for POPULATION in EUROPEAN # METAL_LATIN_EUROPEAN_PERSIAN
+        do
+            RUN_PARALLEL 0.95 0.95 ${N_CPU} 6 "$script_log" "$SCRIPT" $SUFFIX $PANEL $ASSAY $GENE $PVALUE_THRESHOLD $CIS_WINDOW $LD_THRESHOLD_PRUNING $OUTCOME $ROOT_DIR $MODEL $POPULATION
+        done # END POPULATION LOOP
+      done # END PVALUE_THRESHOLD LOOP
+    done # END SUFFIX LOOP
+  done # END EXPOSURE LOOP
+done # END OUTCOME LOOP
+
 
 wait 
 
@@ -265,11 +279,11 @@ ROOT_DIR="/storage/genetics_work2/perrotn/"
 mkdir -p ${ROOT_DIR}tmp
 export TMPDIR=${ROOT_DIR}tmp
 
-DIR="${ROOT_DIR}PURE/MVMR_consortia/"
+DIR="${ROOT_DIR}PURE/MVMR_BM_consortia/"
 mkdir -p $DIR
 cd $DIR || exit 1
 
-SCRIPT="/genetics/PAREG/perrotn/scripts/MVMR_PURE.sh"
+SCRIPT="/genetics/PAREG/perrotn/scripts/MVMR_BM_PURE.sh"
 chmod u+x $SCRIPT
 
 CIS_WINDOW=200000
@@ -278,13 +292,13 @@ PANEL="CMET"
 ASSAY="F11"
 GENE="F11"
 ROOT_DIR="/storage/genetics_work2/perrotn/"
-# OUTCOME="ischemic_stroke_european_GIGASTROKE_2022"
-OUTCOME="all_stroke_european_GIGASTROKE_2022"
-# MODEL="FXI_CES_VS_ISCHEMIC_STROKE"
-# MODEL="FXI_CES_VS_ALL_STROKE"
-MODEL="FXI_ISCHEMIC_STROKE_VS_ALL_STROKE"
 
-nohup bash /genetics/PAREG/perrotn/scripts/MVMR_PURE_parallel.sh \
+
+LIST_EXPOSURES=/storage/genetics_work2/perrotn/PURE/BM_BM_MR_V3/LIST_EXPOSURES_BM_BM.txt
+LIST_OUTCOMES=/genetics_work/perrotn/PURE/pPheWMR_consortia_V5/OUTCOMES_LIST_F11_BM_BM_MR.txt
+
+
+nohup bash /genetics/PAREG/perrotn/scripts/MVMR_BM_PURE_parallel.sh \
 $SCRIPT \
 $CIS_WINDOW \
 $LD_THRESHOLD_PRUNING \
@@ -292,29 +306,31 @@ $PANEL \
 $ASSAY \
 $GENE \
 $ROOT_DIR \
-$OUTCOME \
-$MODEL \
-> /genetics/PAREG/perrotn/scripts/output_nohup/MVMR_PURE_parallel.out &
+$LIST_EXPOSURES \
+$LIST_OUTCOMES \
+> /genetics/PAREG/perrotn/scripts/output_nohup/MVMR_BM_PURE_parallel.out &
 ########################################################################################################################################
-# in progress xxxxxxx
+# in progress ristatp25
 
-# kill $(ps -aux | grep "MVMR_PURE_parallel.sh" | awk '{print $2}' -)
-# kill $(ps -aux | grep "MVMR_PURE.sh" | awk '{print $2}' -)
-
-
-/storage/genetics_work2/perrotn/PURE/MVMR_consortia/NO_MHC_MISSENSE_SPLICING/ischemic_stroke_european_GIGASTROKE_2022/5_MR_RESULTS/LD_0.1
-/storage/genetics_work2/perrotn/PURE/MVMR_consortia/NO_MHC_MISSENSE_SPLICING/all_stroke_european_GIGASTROKE_2022/5_MR_RESULTS/LD_0.1
+# kill $(ps -aux | grep "MVMR_BM_PURE_parallel.sh" | awk '{print $2}' -)
+# kill $(ps -aux | grep "MVMR_BM_PURE.sh" | awk '{print $2}' -)
 
 
-grep -ci "error" /genetics/PAREG/perrotn/scripts/output_nohup/MVMR_PURE_parallel.out
-grep -i "fail" /genetics/PAREG/perrotn/scripts/output_nohup/MVMR_PURE_parallel.out |  grep -cv "after larger attempt(s) failed" - 
-grep -ci "cannot" /genetics/PAREG/perrotn/scripts/output_nohup/MVMR_PURE_parallel.out
-grep -ci "syntax error" /genetics/PAREG/perrotn/scripts/output_nohup/MVMR_PURE_parallel.out
+/storage/genetics_work2/perrotn/PURE/MVMR_BM_consortia/NO_MHC_MISSENSE_SPLICING/ischemic_stroke_european_GIGASTROKE_2022/5_MR_RESULTS/LD_0.1
+/storage/genetics_work2/perrotn/PURE/MVMR_BM_consortia/NO_MHC_MISSENSE_SPLICING/all_stroke_european_GIGASTROKE_2022/5_MR_RESULTS/LD_0.1
 
-grep -in "error" /genetics/PAREG/perrotn/scripts/output_nohup/MVMR_PURE_parallel.out | head
-grep -i "fail" /genetics/PAREG/perrotn/scripts/output_nohup/MVMR_PURE_parallel.out |  grep -nv "after larger attempt(s) failed" - 
-grep -ni "cannot" /genetics/PAREG/perrotn/scripts/output_nohup/MVMR_PURE_parallel.out | head
-grep -in "syntax error" /genetics/PAREG/perrotn/scripts/output_nohup/MVMR_PURE_parallel.out | head
+grep -c "PERFORM MR" /genetics/PAREG/perrotn/scripts/output_nohup/MVMR_BM_PURE_parallel.out
+
+grep -ci "error" /genetics/PAREG/perrotn/scripts/output_nohup/MVMR_BM_PURE_parallel.out
+grep -i "fail" /genetics/PAREG/perrotn/scripts/output_nohup/MVMR_BM_PURE_parallel.out |  grep -cv "after larger attempt(s) failed" - 
+grep -ci "cannot" /genetics/PAREG/perrotn/scripts/output_nohup/MVMR_BM_PURE_parallel.out
+grep -ci "syntax error" /genetics/PAREG/perrotn/scripts/output_nohup/MVMR_BM_PURE_parallel.out
+
+grep -in "error" /genetics/PAREG/perrotn/scripts/output_nohup/MVMR_BM_PURE_parallel.out | head
+grep -i "fail" /genetics/PAREG/perrotn/scripts/output_nohup/MVMR_BM_PURE_parallel.out |  grep -nv "after larger attempt(s) failed" - 
+grep -ni "cannot" /genetics/PAREG/perrotn/scripts/output_nohup/MVMR_BM_PURE_parallel.out | head
+grep -in "syntax error" /genetics/PAREG/perrotn/scripts/output_nohup/MVMR_BM_PURE_parallel.out | head
+
 
 
 

@@ -1,18 +1,9 @@
 # /genetics/PAREG/perrotn/automated_scripts/MVMR.r
 
+
 rm(list = ls())
-args <- commandArgs(trailingOnly = TRUE)
 
-
-EXPOSURES_INPUT <- as.character(args[1]) # INPUT_DIR FOR INPUT_FILE
-OUTCOMES_INPUT <- as.character(args[2])
-OUTPUT_FILE <- as.character(args[3])
-POPULATION <- as.character(args[4])
-PANEL <- as.character(args[5])
-ASSAY <- as.character(args[6])
-GENE <- as.character(args[7])
-
-
+library("optparse")
 library("TwoSampleMR")
 library("ggplot2")
 library("tidyr")
@@ -23,50 +14,126 @@ library("MendelianRandomization")
 
 options(warn = 1)
 
-########################## TEST ##########################
-# POPULATION <- "EUROPEAN"
-# PANEL <- "CMET"
-# ASSAY <- "F11"
-# GENE <- "F11"
-# EXPOSURES_INPUT <- "/storage/genetics_work2/perrotn/PURE/MVMR_consortia/NO_MHC_MISSENSE_SPLICING/PARENTAL_LIFESPAN_LIFEGEN_2017/5_MR_RESULTS/LD_0.1/EXPOSURES.LD_PRUNED_0.1_EUROPEAN_CMET_F11_F11_CIS_200000_PVALUE_0.01_6_chr_pos"
-# OUTCOMES_INPUT <- "/storage/genetics_work2/perrotn/PURE/MVMR_consortia/NO_MHC_MISSENSE_SPLICING/PARENTAL_LIFESPAN_LIFEGEN_2017/5_MR_RESULTS/LD_0.1/OUTCOME.LD_PRUNED_0.1_EUROPEAN_CMET_F11_F11_CIS_200000_PVALUE_0.01_6_chr_pos"
-# OUTPUT_FILE <- "/storage/genetics_work2/perrotn/PURE/MVMR_consortia/NO_MHC_MISSENSE_SPLICING/PARENTAL_LIFESPAN_LIFEGEN_2017/5_MR_RESULTS/LD_0.1/MR_RESULTS.LD_PRUNED_0.1_EUROPEAN_CMET_F11_F11_CIS_200000_PVALUE_0.01_6.txt"
+option_list <- list(
+  make_option(c("--exposures"),
+    type = "character", default = NULL,
+    help = "exposures SNPs file path", metavar = "character"
+  ),
+  make_option(c("--outcome"),
+    type = "character", default = NULL,
+    help = "outcome SNPs file path", metavar = "character"
+  ),
+  make_option(c("--out"),
+    type = "character", default = NULL,
+    help = "output file path", metavar = "character"
+  ),
+  make_option(c("--pop"),
+    type = "character", default = NULL,
+    help = "population", metavar = "character"
+  ),
+  make_option(c("--panel"),
+    type = "character", default = NULL,
+    help = "OLINK Panel", metavar = "character"
+  ),
+  make_option(c("--assay"),
+    type = "character", default = NULL,
+    help = "OLINK Assay", metavar = "character"
+  ),
+  make_option(c("--gene"),
+    type = "character", default = NULL,
+    help = "OLINK Gene", metavar = "character"
+  ),
+  make_option(c("--presso_all"),
+    type = "logical", default = FALSE,
+    help = "Perform MR PRESSO no matter the Cochran's Q test p-value", metavar = "character"
+  )
+)
+
+opt_parser = OptionParser(option_list=option_list)
+opt = parse_args(opt_parser)
+
+if (is.null(opt$panel))
+{
+  message("--panel should be define")
+  exit()
+}
+if (is.null(opt$pop))
+{
+  message("--pop should be define")
+  exit()
+}
+if (is.null(opt$gene))
+{
+  message("--gene should be define")
+  exit()
+}
+if (is.null(opt$assay))
+{
+  message("--assay should be define")
+  exit()
+}
+if (is.null(opt$exposures))
+{
+  message("--exposures should be define")
+  exit()
+}
+if (is.null(opt$outcome))
+{
+  message("--outcome should be define")
+  exit()
+}
+if (is.null(opt$out))
+{
+  message("--out should be define")
+  exit()
+}
+
+
+########################## TEST #########################
+# opt=NULL
+# opt$exposures<-"/storage/genetics_work2/perrotn/PURE/MVMR_BM_consortia/NO_MHC_MISSENSE_SPLICING/VENOUS_THROMBOEMBOLISM_GBMI_EUR_2021/5_MR_RESULTS/LD_0.1/EXPOSURES.LD_PRUNED_0.1_EUROPEAN_CMET_F11_F11_CIS_200000_PVALUE_0.01_F11_EUROPEAN_CMET_CCL14_CCL14_vs_VENOUS_THROMBOEMBOLISM_GBMI_EUR_2021_chr_pos"
+# opt$outcome<-"/storage/genetics_work2/perrotn/PURE/MVMR_BM_consortia/NO_MHC_MISSENSE_SPLICING/VENOUS_THROMBOEMBOLISM_GBMI_EUR_2021/5_MR_RESULTS/LD_0.1/OUTCOME.LD_PRUNED_0.1_EUROPEAN_CMET_F11_F11_CIS_200000_PVALUE_0.01_F11_EUROPEAN_CMET_CCL14_CCL14_vs_VENOUS_THROMBOEMBOLISM_GBMI_EUR_2021_chr_pos"
+# opt$pop="EUROPEAN"
+# opt$panel="CMET"
+# opt$assay="F11"
+# opt$gene="F11"
+# opt$presso_all=T
 #########################################################
 
 
-message(paste0("PANEL: ", PANEL))
-message(paste0("EXPOSURES_INPUT: ", EXPOSURES_INPUT))
-message(paste0("OUTCOMES_INPUT: ", OUTCOMES_INPUT))
+message(paste0("PANEL: ", opt$panel))
+message(paste0("EXPOSURES: ", opt$exposures))
+message(paste0("OUTCOME: ", opt$outcome))
 
 
 # source("/genetics/PAREG/perrotn/automated_scripts/custom_functions.R")
 
-EXPOSURES <- TwoSampleMR::read_exposure_data(EXPOSURES_INPUT, sep = "\t")
+EXPOSURES <- TwoSampleMR::read_exposure_data(opt$exposures, sep = "\t")
 # EXPOSURE$units.exposure_dat<-"mmol/L"
 # Read in Outcomes
-OUTCOME <- TwoSampleMR::read_outcome_data(OUTCOMES_INPUT, sep = "\t")
+OUTCOME <- TwoSampleMR::read_outcome_data(opt$outcome, sep = "\t")
 # OUTCOME$units.outcome_dat<-"1SD"
 # Harmonize Data
 
 EXPOSURES = EXPOSURES[which(EXPOSURES$SNP %in% OUTCOME$SNP),]
 OUTCOME = OUTCOME[which(OUTCOME$SNP %in% EXPOSURES$SNP),]
 
-MR_MODEL=paste0(c(paste0(POPULATION, "_", PANEL, "_", ASSAY, "_", GENE), paste0(unique(EXPOSURES$exposure[EXPOSURES$exposure!=paste0(POPULATION, "_", PANEL, "_", ASSAY, "_", GENE)]), collapse = " ")), collapse = " ")
+MR_MODEL=paste0(c(paste0(opt$pop, "_", opt$panel, "_", opt$assay, "_", opt$gene), paste0(unique(EXPOSURES$exposure[EXPOSURES$exposure!=paste0(opt$pop, "_", opt$panel, "_", opt$assay, "_", opt$gene)]), collapse = " ")), collapse = " ")
 
-EXP_TO_OUT <- EXPOSURES[EXPOSURES$exposure != paste0(POPULATION, "_", PANEL, "_", ASSAY, "_", GENE), ]
+EXP_TO_OUT <- EXPOSURES[EXPOSURES$exposure != paste0(opt$pop, "_", opt$panel, "_", opt$assay, "_", opt$gene), ]
 colnames(EXP_TO_OUT) <- gsub(colnames(EXP_TO_OUT), pattern = "exposure", replacement = "outcome")
 
 OUTCOMES <- rbind(OUTCOME, EXP_TO_OUT[, colnames(OUTCOME)])
 
-if (file.exists(OUTPUT_FILE)) {
-    file.remove(OUTPUT_FILE)
+if (file.exists(opt$out)) {
+    file.remove(opt$out)
 }
 
-if (file.exists(gsub(OUTPUT_FILE, pattern = "RESULTS\\.LD", replacement = "IVs\\.LD"))) {
-    file.remove(gsub(OUTPUT_FILE, pattern = "RESULTS\\.LD", replacement = "IVs\\.LD"))
+if (file.exists(gsub(opt$out, pattern = "RESULTS\\.LD", replacement = "IVs\\.LD"))) {
+    file.remove(gsub(opt$out, pattern = "RESULTS\\.LD", replacement = "IVs\\.LD"))
 }
 
-EXP = paste0(POPULATION, "_", PANEL, "_", ASSAY, "_", GENE)
+EXP = paste0(opt$pop, "_", opt$panel, "_", opt$assay, "_", opt$gene)
 
     message(
         "EXPOSURE IN PROGRESS: ",
@@ -77,11 +144,13 @@ EXP = paste0(POPULATION, "_", PANEL, "_", ASSAY, "_", GENE)
         length(unique(EXPOSURES$exposure)),
         ")"
     )
-    message(paste0("PANEL: ", PANEL))
-    message(paste0("EXPOSURES_INPUT: ", EXPOSURES_INPUT))
-    message(paste0("OUTCOMES_INPUT: ", OUTCOMES_INPUT))
+    message(paste0("PANEL: ", opt$panel))
+    message(paste0("opt$exposures: ", opt$exposures))
+    message(paste0("opt$outcome: ", opt$outcome))
 
 COUNT=0
+
+    OUT=unique(OUTCOMES$outcome)[which(unique(OUTCOMES$outcome) != EXP)][1]
     for (OUT in unique(OUTCOMES$outcome)[which(unique(OUTCOMES$outcome) != EXP)])
     {
         DATA <- TwoSampleMR::harmonise_data(
@@ -281,12 +350,16 @@ COUNT=0
 
             MR_res$over.dispersion <- NA
 
+
             MR_res <- rbind(MR_res, MR_RAPS)
+
+            MR_res$PRESSO_Global_Test_pval = NA
+
 
             MR_hetero <- TwoSampleMR::mr_heterogeneity(DATA,
                 method_list = c(
                     "mr_egger_regression",
-                    "mr_ivw"
+                    "mr_ivw","mr_weighted_median"
                 )
             )
 
@@ -323,146 +396,149 @@ COUNT=0
             }
 
 
-            if (any(MR_res$Q_pval < 0.05, na.rm = T)) {
-                message("Q P-VALUE LOWER THAN 0.05")
-
-                for (DISTRIBUTION in c(100, 500, 1000))
-                {
-                    MR_PRESSO_res <- tryCatch(
-                        {
-                            MR_PRESSO(DISTRIBUTION)
-                        },
-                        error = function(e) {
-
-                        }
-                    )
-
-                    if (!is.null(MR_PRESSO_res)) {
-                        break()
-                    }
-                } # END DISTRIBUTION LOOP
-
-                if (!is.null(MR_PRESSO_res)) {
-                    message("MR_PRESSO_res != NULL")
-
-                    MR_PRESSO_res <- cbind(
-                        MR_res[1:2, c("id.exposure", "id.outcome", "outcome", "exposure")],
-                        data.frame(
-                            method = paste0("MR-PRESSO ", as.character(
-                                levels(MR_PRESSO_res$`Main MR results`$"MR Analysis")
-                            )),
-                            nsnp = rep(NA, 2),
-                            b = MR_PRESSO_res$`Main MR results`$"Causal Estimate",
-                            se = MR_PRESSO_res$`Main MR results`$"Sd",
-                            pval = MR_PRESSO_res$`Main MR results`$"P-value",
-                            over.dispersion = rep(NA, 2),
-                            Q = rep(NA, 2),
-                            Q_df = rep(NA, 2),
-                            Q_pval = rep(NA, 2),
-                            egger_intercept = rep(NA, 2),
-                            egger_intercept_se = rep(NA, 2),
-                            egger_intercept_pval = rep(NA, 2),
-                            N_outliers = rep(
-                                length(
-                                    MR_PRESSO_res$`MR-PRESSO results`$`Distortion Test`$`Outliers Indices`[-which(
-                                        MR_PRESSO_res$`MR-PRESSO results`$`Distortion Test`$`Outliers Indices` ==
-                                            "No significant outliers"
-                                    )]
-                                ),
-                                2
-                            ),
-                            Distortion_Pval = ifelse(
-                                is.null(
-                                    MR_PRESSO_res$`MR-PRESSO results`$`Distortion Test`$`Pvalue`
-                                ),
-                                rep(NA, 2),
-                                rep(
-                                    MR_PRESSO_res$`MR-PRESSO results`$`Distortion Test`$`Pvalue`,
-                                    2
-                                )
-                            ),
-                            stringsAsFactors = F
-                        )
-                    )
-                    MR_res <- rbind(MR_res, MR_PRESSO_res)
-
-
-                    if (unique(na.omit(MR_res$N_outliers)) > 0) {
-                        message("OUTLIERS SNPs ")
-
-                        message(unique(MR_res$exposure))
-                        message(unique(MR_res$outcome))
-                        data.table::fwrite(
-                            list(c(
-                                as.character(unique(MR_res$exposure)), as.character(unique(MR_res$outcome))
-                            )),
-                            paste0(OUTPUT_FILE, "_outliers"),
-                            quote = F,
-                            row.names = F,
-                            col.names = T,
-                            sep = "\t",
-                            append = F
-                        )
-                    }
-                } else {
-                    message("MR_PRESSO_res == NULL")
-
-                    MR_res <- rbind(MR_res, cbind(
-                        MR_res[1, c("id.exposure", "id.outcome", "outcome", "exposure")],
-                        data.frame(
-                            method = "MR PRESSO",
-                            nsnp = NA,
-                            b = "Not enough elements to compute empirical P-values",
-                            se = NA,
-                            pval = NA,
-                            over.dispersion = NA,
-                            Q = NA,
-                            Q_df = NA,
-                            Q_pval = NA,
-                            egger_intercept = NA,
-                            egger_intercept_se = NA,
-                            egger_intercept_pval = NA,
-                            N_outliers = NA,
-                            Distortion_Pval = NA,
-                            stringsAsFactors = F
-                        )
-                    ))
-                }
-            } else {
-                message("Q P-VALUE HIGHER THAN 0.05")
-
-
-
-                MR_res <- plyr::rbind.fill(MR_res, cbind(
-                    MR_res[1, c("id.exposure", "id.outcome", "outcome", "exposure")],
-                    data.frame(
-                        method = "MR PRESSO",
-                        b = "NOT PERFORMED Q_pval > 0.05",
-                        stringsAsFactors = F
-                    )
-                ))
-
-                # MR_res = rbind(MR_res,  cbind(
-                #   MR_res[1, c("id.exposure", "id.outcome", "outcome", "exposure")],
-                #   data.frame(
-                #     method = "MR PRESSO",
-                #     nsnp = NA,
-                #     b = "NOT PERFORMED Q_pval > 0.05",
-                #     se = NA,
-                #     pval = NA,
-                #     over.dispersion = NA,
-                #     Q = NA,
-                #     Q_df = NA,
-                #     Q_pval = NA,
-                #     egger_intercept = NA,
-                #     egger_intercept_se = NA,
-                #     egger_intercept_pval = NA,
-                #     N_outliers = NA,
-                #     Distortion_Pval = NA,
-                #     stringsAsFactors = F
-                #   )
-                # ))
+            if (any(MR_res$Q_pval < 0.05, na.rm = T) | opt$presso_all)
+            {
+            message("Q P-VALUE LOWER THAN 0.05 | opt$presso_all==TRUE")
+            
+            if (exists("MR_PRESSO_res"))
+            {
+                rm("MR_PRESSO_res")
             }
+
+            for (DISTRIBUTION in c(100, 500, 1000))
+            {
+                MR_PRESSO_res =  tryCatch({
+                MR_PRESSO(DISTRIBUTION)
+                },
+                error = function(e) {
+                
+                })
+                
+                if (!is.null(MR_PRESSO_res))
+                {
+                break()
+                }
+            } # END DISTRIBUTION LOOP
+            
+
+            if (!is.null(MR_PRESSO_res))
+            {
+                message("MR_PRESSO_res != NULL")
+                
+                MR_PRESSO_res_2 = cbind(
+                MR_res[1:2, c("id.exposure", "id.outcome", "outcome", "exposure")],
+                data.frame(
+                    method = paste0("MR-PRESSO ", as.character(
+                    levels(MR_PRESSO_res$`Main MR results`$"MR Analysis")
+                    )),
+                    nsnp = rep(NA, 2),
+                    b = MR_PRESSO_res$`Main MR results`$"Causal Estimate",
+                    se = MR_PRESSO_res$`Main MR results`$"Sd",
+                    pval = MR_PRESSO_res$`Main MR results`$"P-value",
+                    over.dispersion = rep(NA, 2),
+                    Q = rep(NA, 2),
+                    Q_df = rep(NA, 2),
+                    Q_pval = rep(NA, 2),
+                    egger_intercept = rep(NA, 2),
+                    egger_intercept_se = rep(NA, 2),
+                    egger_intercept_pval = rep(NA, 2),
+                    N_outliers = ifelse(is.null(MR_PRESSO_res$`MR-PRESSO results`$`Distortion Test`),rep(NA, 2),ifelse(all(MR_PRESSO_res$`MR-PRESSO results`$`Distortion Test`$`Outliers Indices` == "All SNPs considered as outliers") | all(MR_PRESSO_res$`MR-PRESSO results`$`Distortion Test`$`Outliers Indices` == "No significant outliers"), rep(MR_PRESSO_res$`MR-PRESSO results`$`Distortion Test`$`Outliers Indices`, 2),rep(length(MR_PRESSO_res$`MR-PRESSO results`$`Distortion Test`$`Outliers Indices`),2))),
+                    Distortion_Pval = ifelse(is.null(MR_PRESSO_res$`MR-PRESSO results`$`Distortion Test`$`Pvalue`),rep(NA, 2),rep(MR_PRESSO_res$`MR-PRESSO results`$`Distortion Test`$`Pvalue`,2)),
+                    PRESSO_Global_Test_pval = ifelse(is.null(MR_PRESSO_res$`MR-PRESSO results`$`Global Test`$Pvalue),rep(NA, 2),rep(MR_PRESSO_res$`MR-PRESSO results`$`Global Test`$Pvalue,2)),
+                    stringsAsFactors = F
+                )
+                )
+
+                MR_res = rbind(MR_res, MR_PRESSO_res_2)
+                
+                if (any(!is.na(MR_res$N_outliers)))
+                {
+                if (length(which(MR_res$N_outliers != "All SNPs considered as outliers" & MR_res$N_outliers != "No significant outliers")) > 0)
+                {
+
+                    message("OUTLIERS SNPs ")
+                    
+                    message(unique(MR_res$exposure))
+                    message(unique(MR_res$outcome))
+
+                    data.table::fwrite(
+                    data.frame(exposure=rep(unique(MR_res$exposure),as.numeric(unique(na.omit(MR_res$N_outliers)))),
+                    outcome=rep(unique(MR_res$outcome),as.numeric(unique(na.omit(MR_res$N_outliers)))),
+                    outliers=paste(DATA$chr.exposure[MR_PRESSO_res$`MR-PRESSO results`$`Distortion Test`$`Outliers Indices`],DATA$pos.exposure[MR_PRESSO_res$`MR-PRESSO results`$`Distortion Test`$`Outliers Indices`],DATA$other_allele.exposure[MR_PRESSO_res$`MR-PRESSO results`$`Distortion Test`$`Outliers Indices`],DATA$effect_allele.exposure[MR_PRESSO_res$`MR-PRESSO results`$`Distortion Test`$`Outliers Indices`], sep = "_"),
+                    stringsAsFactors = F),
+                    gsub(opt$out,pattern=".txt",replacement = "_outliers.txt"),
+                    quote = F,
+                    row.names = F,
+                    col.names = T,
+                    sep = "\t",
+                    append = F
+                    )
+                }
+                }
+            
+                
+            } else {
+                message("MR_PRESSO_res == NULL")
+                
+                MR_res = rbind(MR_res,  cbind(
+                MR_res[1, c("id.exposure", "id.outcome", "outcome", "exposure")],
+                data.frame(
+                    method = "MR PRESSO",
+                    nsnp = NA,
+                    b = "Not enough elements to compute empirical P-values",
+                    se = NA,
+                    pval = NA,
+                    over.dispersion = NA,
+                    Q = NA,
+                    Q_df = NA,
+                    Q_pval = NA,
+                    egger_intercept = NA,
+                    egger_intercept_se = NA,
+                    egger_intercept_pval = NA,
+                    N_outliers = NA,
+                    Distortion_Pval = NA,
+                    PRESSO_Global_Test_pval = NA,
+                    stringsAsFactors = F
+                )
+                ))
+            }
+            
+            
+            } else{
+            message("Q P-VALUE HIGHER THAN 0.05")
+            
+
+
+            MR_res = plyr::rbind.fill(MR_res, cbind(
+            MR_res[1, c("id.exposure", "id.outcome", "outcome", "exposure")],
+            data.frame(
+            method = "MR PRESSO",
+            b = "NOT PERFORMED Q_pval > 0.05",
+            stringsAsFactors = F)))
+
+            # MR_res = rbind(MR_res,  cbind(
+            #   MR_res[1, c("id.exposure", "id.outcome", "outcome", "exposure")],
+            #   data.frame(
+            #     method = "MR PRESSO",
+            #     nsnp = NA,
+            #     b = "NOT PERFORMED Q_pval > 0.05",
+            #     se = NA,
+            #     pval = NA,
+            #     over.dispersion = NA,
+            #     Q = NA,
+            #     Q_df = NA,
+            #     Q_pval = NA,
+            #     egger_intercept = NA,
+            #     egger_intercept_se = NA,
+            #     egger_intercept_pval = NA,
+            #     N_outliers = NA,
+            #     Distortion_Pval = NA,
+            #     stringsAsFactors = F
+            #   )
+            # ))
+            }
+            
+            
         }
 
         if (exists("MR_res")) {
@@ -578,27 +654,27 @@ COUNT=0
                 })
         }
 
-        if (EXP == paste0(POPULATION, "_", PANEL, "_", ASSAY, "_", GENE))
+        if (EXP == paste0(opt$pop, "_", opt$panel, "_", opt$assay, "_", opt$gene))
         {
             ## POPULATION ##
-            all_MR_res$POPULATION <- POPULATION
+            all_MR_res$POPULATION <- opt$pop
 
 
             ## PANEL ##
-            all_MR_res$PANEL <- PANEL
+            all_MR_res$PANEL <- opt$panel
 
             ## BIOMARKER ##
-            all_MR_res$BIOMARKER <- ASSAY
+            all_MR_res$BIOMARKER <- opt$assay
 
             ## GENE ##
-            all_MR_res$GENE <- GENE
+            all_MR_res$GENE <- opt$gene
 
         } else {
               ## POPULATION ##
             all_MR_res$POPULATION <- NA
 
             ## PANEL ##
-            all_MR_res$PANEL <- NA
+            all_MR_res$opt$panel <- NA
 
             ## BIOMARKER ##
             all_MR_res$BIOMARKER <- NA
@@ -614,7 +690,7 @@ COUNT=0
         COUNT <- COUNT + 1
         data.table::fwrite(
             all_MR_res,
-            OUTPUT_FILE,
+            opt$out,
             quote = F,
             row.names = F,
             col.names = COUNT == 1,
@@ -629,7 +705,7 @@ COUNT=0
 
         data.table::fwrite(
             DATA,
-            gsub(OUTPUT_FILE, pattern = "RESULTS\\.LD", replacement = "IVs\\.LD"),
+            gsub(opt$out, pattern = "RESULTS\\.LD", replacement = "IVs\\.LD"),
             quote = F,
             row.names = F,
             col.names = COUNT == 1,
@@ -646,12 +722,13 @@ bx = TSMR_MV_DATA$exposure_beta,
 bxse = TSMR_MV_DATA$exposure_se,
 by = TSMR_MV_DATA$outcome_beta,
 byse = TSMR_MV_DATA$outcome_se,
-exposure = TSMR_MV_DATA$expname["exposure"],
-outcome = TSMR_MV_DATA$outname["outcome"],
+exposure = TSMR_MV_DATA$expname[,"exposure"],
+outcome = TSMR_MV_DATA$outname[,"outcome"],
 snps = rownames(TSMR_MV_DATA$exposure_beta),
 effect_allele = sapply(rownames(TSMR_MV_DATA$exposure_beta), FUN=function(x){toupper(unlist(strsplit(x, "_"))[4])}),
 other_allele = sapply(rownames(TSMR_MV_DATA$exposure_beta), FUN=function(x){tolower(unlist(strsplit(x, "_"))[3])})
 )
+
 
 MR_MVIVW = mr_mvivw(
 MV_DATA,
@@ -667,10 +744,19 @@ robust = TRUE,
 correl = FALSE,
 )
 
-MR_MVLASSO=mr_mvlasso(
-MV_DATA,
-orientate = 1,
-distribution = "normal")
+
+MR_MVLASSO <- tryCatch(
+    {
+        mr_mvlasso(
+            MV_DATA,
+            orientate = 1,
+            distribution = "normal"
+        )
+    },
+    error = function(e) {
+        return("MV MR LASSO NOT PERFORMED, ERROR")
+    }
+)
 
 MR_MVMEDIAN=mr_mvmedian(
 MV_DATA,
@@ -689,13 +775,14 @@ MVMR_RES <- data.frame(
     id.exposure = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     id.outcome = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     outcome = rep(MR_MVIVW$Outcome, nrow(TSMR_MV_DATA$expname["exposure"])),
-    exposure = TSMR_MV_DATA$expname["exposure"],
+    exposure = TSMR_MV_DATA$expname[,"exposure"],
     method = rep("Multivariable inverse-variance weighted", nrow(TSMR_MV_DATA$expname["exposure"])),
     nsnp = rep(MR_MVIVW$SNPs, nrow(TSMR_MV_DATA$expname["exposure"])),
     b = MR_MVIVW$Estimate,
     se = MR_MVIVW$StdError,
     pval = MR_MVIVW$Pvalue,
     over.dispersion = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    PRESSO_Global_Test_pval = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     Q = rep(MR_MVIVW$Heter.Stat[1], nrow(TSMR_MV_DATA$expname["exposure"])),
     Q_df = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     Q_pval = rep(MR_MVIVW$Heter.Stat[2], nrow(TSMR_MV_DATA$expname["exposure"])),
@@ -715,10 +802,10 @@ MVMR_RES <- data.frame(
     correct_causal_direction = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     steiger_pval = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     F_STAT = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
-    POPULATION = rep(POPULATION, nrow(TSMR_MV_DATA$expname["exposure"])),
-    PANEL = rep(PANEL, nrow(TSMR_MV_DATA$expname["exposure"])),
-    BIOMARKER = rep(ASSAY, nrow(TSMR_MV_DATA$expname["exposure"])),
-    GENE = rep(GENE, nrow(TSMR_MV_DATA$expname["exposure"])),
+    POPULATION = rep(opt$pop, nrow(TSMR_MV_DATA$expname["exposure"])),
+    PANEL = rep(opt$panel, nrow(TSMR_MV_DATA$expname["exposure"])),
+    BIOMARKER = rep(opt$assay, nrow(TSMR_MV_DATA$expname["exposure"])),
+    GENE = rep(opt$gene, nrow(TSMR_MV_DATA$expname["exposure"])),
     MODEL = rep(MR_MODEL, nrow(TSMR_MV_DATA$expname["exposure"])),
     stringsAsFactors = F
 )
@@ -735,6 +822,7 @@ MVMR_RES <- rbind(MVMR_RES, data.frame(
     se = MR_MVIVW_ROB$StdError,
     pval = MR_MVIVW_ROB$Pvalue,
     over.dispersion = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    PRESSO_Global_Test_pval = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     Q = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     Q_df = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     Q_pval = rep(MR_MVIVW_ROB$Heter.Stat[2], nrow(TSMR_MV_DATA$expname["exposure"])),
@@ -754,25 +842,28 @@ MVMR_RES <- rbind(MVMR_RES, data.frame(
     correct_causal_direction = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     steiger_pval = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     F_STAT = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
-    POPULATION = rep(POPULATION, nrow(TSMR_MV_DATA$expname["exposure"])),
-    PANEL = rep(PANEL, nrow(TSMR_MV_DATA$expname["exposure"])),
-    BIOMARKER = rep(ASSAY, nrow(TSMR_MV_DATA$expname["exposure"])),
-    GENE = rep(GENE, nrow(TSMR_MV_DATA$expname["exposure"])),
+    POPULATION = rep(opt$pop, nrow(TSMR_MV_DATA$expname["exposure"])),
+    PANEL = rep(opt$panel, nrow(TSMR_MV_DATA$expname["exposure"])),
+    BIOMARKER = rep(opt$assay, nrow(TSMR_MV_DATA$expname["exposure"])),
+    GENE = rep(opt$gene, nrow(TSMR_MV_DATA$expname["exposure"])),
     MODEL = rep(MR_MODEL, nrow(TSMR_MV_DATA$expname["exposure"])),
     stringsAsFactors = F
 ))
 
-MVMR_RES <- rbind(MVMR_RES, data.frame(
+if (class(MR_MVLASSO) == "character")
+{
+    MVMR_RES <- rbind(MVMR_RES, data.frame(
     id.exposure = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     id.outcome = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
-    outcome = rep(MR_MVLASSO$Outcome, nrow(TSMR_MV_DATA$expname["exposure"])),
+    outcome = rep(MR_MVIVW_ROB$Outcome, nrow(TSMR_MV_DATA$expname["exposure"])),
     exposure = TSMR_MV_DATA$expname["exposure"],
     method = rep("Multivariable MR-Lasso", nrow(TSMR_MV_DATA$expname["exposure"])),
-    nsnp = rep(MR_MVLASSO$Valid, nrow(TSMR_MV_DATA$expname["exposure"])),
-    b = MR_MVLASSO$Estimate,
-    se = MR_MVLASSO$StdError,
-    pval = MR_MVLASSO$Pvalue,
+    nsnp = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    b = MR_MVLASSO,
+    se = NA,
+    pval = NA,
     over.dispersion = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    PRESSO_Global_Test_pval = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     Q = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     Q_df = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     Q_pval = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
@@ -792,13 +883,53 @@ MVMR_RES <- rbind(MVMR_RES, data.frame(
     correct_causal_direction = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     steiger_pval = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     F_STAT = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
-    POPULATION = rep(POPULATION, nrow(TSMR_MV_DATA$expname["exposure"])),
-    PANEL = rep(PANEL, nrow(TSMR_MV_DATA$expname["exposure"])),
-    BIOMARKER = rep(ASSAY, nrow(TSMR_MV_DATA$expname["exposure"])),
-    GENE = rep(GENE, nrow(TSMR_MV_DATA$expname["exposure"])),
+    POPULATION = rep(opt$pop, nrow(TSMR_MV_DATA$expname["exposure"])),
+    PANEL = rep(opt$panel, nrow(TSMR_MV_DATA$expname["exposure"])),
+    BIOMARKER = rep(opt$assay, nrow(TSMR_MV_DATA$expname["exposure"])),
+    GENE = rep(opt$gene, nrow(TSMR_MV_DATA$expname["exposure"])),
     MODEL = rep(MR_MODEL, nrow(TSMR_MV_DATA$expname["exposure"])),
     stringsAsFactors = F
 ))
+} else {
+MVMR_RES <- rbind(MVMR_RES, data.frame(
+    id.exposure = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    id.outcome = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    outcome = rep(MR_MVLASSO$Outcome, nrow(TSMR_MV_DATA$expname["exposure"])),
+    exposure = TSMR_MV_DATA$expname["exposure"],
+    method = rep("Multivariable MR-Lasso", nrow(TSMR_MV_DATA$expname["exposure"])),
+    nsnp = rep(MR_MVLASSO$Valid, nrow(TSMR_MV_DATA$expname["exposure"])),
+    b = MR_MVLASSO$Estimate,
+    se = MR_MVLASSO$StdError,
+    pval = MR_MVLASSO$Pvalue,
+    over.dispersion = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    PRESSO_Global_Test_pval = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    Q = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    Q_df = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    Q_pval = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    egger_intercept = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    egger_intercept_se = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    egger_intercept_pval = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    N_outliers = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    Distortion_Pval = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    mean.samplesize.outcome = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    min.samplesize.outcome = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    max.samplesize.outcome = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    ncase.outcome = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    ncontrol.outcome = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    samplesize.exposure = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    snp_r2.exposure = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    snp_r2.outcome = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    correct_causal_direction = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    steiger_pval = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    F_STAT = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    POPULATION = rep(opt$pop, nrow(TSMR_MV_DATA$expname["exposure"])),
+    PANEL = rep(opt$panel, nrow(TSMR_MV_DATA$expname["exposure"])),
+    BIOMARKER = rep(opt$assay, nrow(TSMR_MV_DATA$expname["exposure"])),
+    GENE = rep(opt$gene, nrow(TSMR_MV_DATA$expname["exposure"])),
+    MODEL = rep(MR_MODEL, nrow(TSMR_MV_DATA$expname["exposure"])),
+    stringsAsFactors = F
+))
+}
 
 MVMR_RES <- rbind(MVMR_RES, data.frame(
     id.exposure = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
@@ -811,6 +942,7 @@ MVMR_RES <- rbind(MVMR_RES, data.frame(
     se = MR_MVMEDIAN$StdError,
     pval = MR_MVMEDIAN$Pvalue,
     over.dispersion = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    PRESSO_Global_Test_pval = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     Q = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     Q_df = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     Q_pval = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
@@ -830,10 +962,10 @@ MVMR_RES <- rbind(MVMR_RES, data.frame(
     correct_causal_direction = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     steiger_pval = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     F_STAT = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
-    POPULATION = rep(POPULATION, nrow(TSMR_MV_DATA$expname["exposure"])),
-    PANEL = rep(PANEL, nrow(TSMR_MV_DATA$expname["exposure"])),
-    BIOMARKER = rep(ASSAY, nrow(TSMR_MV_DATA$expname["exposure"])),
-    GENE = rep(GENE, nrow(TSMR_MV_DATA$expname["exposure"])),
+    POPULATION = rep(opt$pop, nrow(TSMR_MV_DATA$expname["exposure"])),
+    PANEL = rep(opt$panel, nrow(TSMR_MV_DATA$expname["exposure"])),
+    BIOMARKER = rep(opt$assay, nrow(TSMR_MV_DATA$expname["exposure"])),
+    GENE = rep(opt$gene, nrow(TSMR_MV_DATA$expname["exposure"])),
     MODEL = rep(MR_MODEL, nrow(TSMR_MV_DATA$expname["exposure"])),
     stringsAsFactors = F
 ))
@@ -850,6 +982,7 @@ MVMR_RES <- rbind(MVMR_RES, data.frame(
     se = MR_MVEGGER$StdError.Est,
     pval = MR_MVEGGER$Pvalue.Est,
     over.dispersion = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
+    PRESSO_Global_Test_pval = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     Q = rep(MR_MVEGGER$Heter.Stat[1], nrow(TSMR_MV_DATA$expname["exposure"])),
     Q_df = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     Q_pval = rep(MR_MVEGGER$Heter.Stat[2], nrow(TSMR_MV_DATA$expname["exposure"])),
@@ -869,26 +1002,27 @@ MVMR_RES <- rbind(MVMR_RES, data.frame(
     correct_causal_direction = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     steiger_pval = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
     F_STAT = rep(NA, nrow(TSMR_MV_DATA$expname["exposure"])),
-    POPULATION = rep(POPULATION, nrow(TSMR_MV_DATA$expname["exposure"])),
-    PANEL = rep(PANEL, nrow(TSMR_MV_DATA$expname["exposure"])),
-    BIOMARKER = rep(ASSAY, nrow(TSMR_MV_DATA$expname["exposure"])),
-    GENE = rep(GENE, nrow(TSMR_MV_DATA$expname["exposure"])),
+    POPULATION = rep(opt$pop, nrow(TSMR_MV_DATA$expname["exposure"])),
+    PANEL = rep(opt$panel, nrow(TSMR_MV_DATA$expname["exposure"])),
+    BIOMARKER = rep(opt$assay, nrow(TSMR_MV_DATA$expname["exposure"])),
+    GENE = rep(opt$gene, nrow(TSMR_MV_DATA$expname["exposure"])),
     MODEL = rep(MR_MODEL, nrow(TSMR_MV_DATA$expname["exposure"])),
     stringsAsFactors = F
 ))
 
 
+# KEEP ONLY BM PURE AS EXPOSURE AS IV NOT DESIGN FOR THAT
+MVMR_RES = MVMR_RES[which(MVMR_RES$exposure == EXP),]
+
 data.table::fwrite(
             MVMR_RES,
-            OUTPUT_FILE,
+            opt$out,
             quote = F,
             row.names = F,
             col.names = F,
             sep = "\t",
             append = T
         )
-
-
 
   message("MR DONE")
 

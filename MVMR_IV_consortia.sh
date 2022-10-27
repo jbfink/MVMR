@@ -2,9 +2,48 @@
 
 # /genetics/PAREG/perrotn/scripts/IVs_MVMR_PURE.sh
 
-#####################################
-########## Multivariate MR ##########
-#####################################
+
+
+# DO NOT USE, USE THE ONE THAT INCLUDE BM AS ADDITIONNAL EXPOSURE
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+########################################
+########## Multivariate MR IV ##########
+########################################
+
+# MVMR IV FOR PURE BM ONLY. DOES NOT RETRIEVE IV FOR THE OTHER EXPOSURES
+# FROM SIGNIFICANT pQTLs EXTRACT SAME SNPs IN OTHER EXPOSURES
+# EXTRACT SAME SNPs IN OUTCOME
+# CLUMPING
+# ...
 
 echo "Started IVs MVMR at: "$(date)
 SECONDS=0
@@ -14,15 +53,14 @@ PANEL=$2
 ASSAY=$3
 GENE=$4
 LIST_EXPOSURES=$5
-ROW=$6
-PVALUE_THRESHOLD=$7
-CIS_WINDOW=$8
-LD_THRESHOLD_PRUNING=$9
-OUTCOME=${10}
-ROOT_DIR=${11}
-GRS_FORMATING_FILE=${12}
-MODEL=${13}
-POPULATION=${14}
+PVALUE_THRESHOLD=$6
+CIS_WINDOW=$7
+LD_THRESHOLD_PRUNING=$8
+OUTCOME=$9
+ROOT_DIR=${10}
+GRS_FORMATING_FILE=${11}
+MODEL=${12}
+POPULATION=${13}
 
 #### TEST ####
 # CIS_WINDOW=200000
@@ -34,10 +72,10 @@ POPULATION=${14}
 # GENE="F11"
 # POPULATION="EUROPEAN"
 # ROOT_DIR="/storage/genetics_work2/perrotn/"
-# GRS_FORMATING_FILE="/storage/genetics_work2/perrotn/PURE/MVMR_consortia/GRS_FORMATTING_FILE.2vVM8F"
-# LIST_EXPOSURES="/storage/genetics_work2/perrotn/PURE/MVMR_consortia/TEST_FILE_MVMR_2.txt"
-# OUTCOME="PARENTAL_LIFESPAN_LIFEGEN_2017"
-# MODEL=1
+# GRS_FORMATING_FILE="/storage/genetics_work2/perrotn/PURE/MVMR_consortia/GRS_FORMATTING_FILE.K2Uwt9"
+# LIST_EXPOSURES="/storage/genetics_work2/perrotn/PURE/MVMR_consortia/FXI_CES_VS_ISCHEMIC_STROKE.txt"
+# OUTCOME="ischemic_stroke_european_GIGASTROKE_2022"
+# MODEL="FXI_CES_VS_ISCHEMIC_STROKE"
 ##############
 
 
@@ -46,7 +84,6 @@ echo "PANEL:" $PANEL
 echo "ASSAY:" $ASSAY
 echo "GENE:" $GENE
 echo "LIST_EXPOSURES:" $LIST_EXPOSURES
-echo "ROW:" $ROW
 echo "PVALUE_THRESHOLD:" $PVALUE_THRESHOLD
 echo "CIS_WINDOW:" $CIS_WINDOW
 echo "LD_THRESHOLD_PRUNING:" $LD_THRESHOLD_PRUNING
@@ -54,15 +91,14 @@ echo "OUTCOME:" $OUTCOME
 echo "ROOT_DIR:" $ROOT_DIR
 echo "GRS_FORMATING_FILE:" $GRS_FORMATING_FILE
 echo "MODEL:" $MODEL
+echo "POPULATION:" $POPULATION
 
 
 export TMPDIR=${ROOT_DIR}tmp
 
-
 ROOT_OUTPUT_DIR=${ROOT_DIR}PURE/MVMR_consortia/${SUFFIX}/
 IVs_PURE=/storage/genetics_work2/perrotn/PURE/MR_INSTRUMENTS_V5/PURE_MR_IVs_PANEL_${PANEL}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${SUFFIX}
-GRS_DIR_1="/genetics/PAREG/common/Public_Data_Organized/GRS_FORMATTED_MC_2018_03_12/"
-GRS_DIR_2="/genetics/PAREG/common/Public_Data_Organized/GWAS_FORMATTING_2022_02_02/"
+GRS_DIR="/genetics/PAREG/common/Public_Data_Organized/GWAS_FORMATTING_2022_02_02/"
 plink2="/genetics/PAREG/common/PURE_DATA/MR_INSTRUMENTS/2020_05_06/plink"
 
 mkdir -p $ROOT_OUTPUT_DIR
@@ -71,20 +107,21 @@ echo "##### OUTCOME:" $OUTCOME "#####"
 
 OUTPUT_DIR=${ROOT_OUTPUT_DIR}${OUTCOME}/
 BIOMARKER_OUTCOME_DIR=${OUTPUT_DIR}OUTCOME_FORMATTING_FOR_MRBASE
+BIOMARKER_EXPOSURES_DIR=${OUTPUT_DIR}EXPOSURES_FORMATTING_FOR_MRBASE
 
 mkdir -p ${OUTPUT_DIR}
 
 cd ${OUTPUT_DIR} || exit 1
 
 mkdir -p ${BIOMARKER_OUTCOME_DIR}
-
+mkdir -p ${BIOMARKER_EXPOSURES_DIR}
 
 if [ ! -f $IVs_PURE ]; then
-echo "NO PURE IV FILE"
-exit 1
+  echo "NO PURE IV FILE"
+  exit 1
 fi
 
-#### Format Outcome Summary Statistics ######
+#### Format Exposure & Outcome Summary Statistics ######
 unset COL_NUM_PURE
 declare -A COL_NUM_PURE
 count=0
@@ -95,198 +132,18 @@ done
 
 awk 'BEGIN{FS=OFS="\t"}NR>1 &&  $('${COL_NUM_PURE["Phenotype"]}')=="'$POPULATION'""_""'$PANEL'""_""'$ASSAY'""_""'$GENE'" && (length($('${COL_NUM_PURE["other_allele"]}'))+length($('${COL_NUM_PURE["effect_allele"]}'))==2) {print $('${COL_NUM_PURE["chr"]}'), $('${COL_NUM_PURE["pos"]}'), $('${COL_NUM_PURE["other_allele"]}'), $('${COL_NUM_PURE["effect_allele"]}')}' $IVs_PURE | sort -u > list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
 
-echo "" | awk 'BEGIN{FS=OFS="\t";print "Phenotype","SNP","chr","pos","other_allele","effect_allele", "beta","se","eaf","pval","units","gene","samplesize","ncase","ncontrol"}' > EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
 
-EXPOSURE_MODEL="CAD_cardiogram_c4d_ukb_2017"
-for EXPOSURE_MODEL in $(awk 'BEGIN{FS=OFS="\t"}NR == "'$ROW'"{print}' $LIST_EXPOSURES)
-do
-  echo $EXPOSURE_MODEL
-
-  if [ -f ${GRS_DIR_1}${EXPOSURE_MODEL}/8_final ] || [ -f ${GRS_DIR_2}${EXPOSURE_MODEL}/4_final.txt.gz ]; then
-    if [ -f ${GRS_DIR_2}${EXPOSURE_MODEL}/4_final.txt.gz ]; then
-      SUMSTAT_FILE=${GRS_DIR_2}${EXPOSURE_MODEL}/4_final.txt.gz
-      SUMSTAT_FILE_ZIP="true"
-    else
-      SUMSTAT_FILE=${GRS_DIR_1}${EXPOSURE_MODEL}/8_final
-      SUMSTAT_FILE_ZIP="false"
-    fi
-  else
-    echo $EXPOSURE_MODEL | cat - >> ${ROOT_OUTPUT_DIR}MISSING_EXPOSURE_MODEL
-    cd $ROOT_OUTPUT_DIR || exit 1
-    rm -r $OUTPUT_DIR
-    exit 1
-  fi
-
-  if [ $SUMSTAT_FILE_ZIP == "true" ]; then
-  HEAD_SS=$(gzip -cd $SUMSTAT_FILE | head -n 1 -)
-  else
-  HEAD_SS=$(head -n 1 $SUMSTAT_FILE)
-  fi
-
-  unset COL_NUM_EXP_MOD
-  declare -A COL_NUM_EXP_MOD
-  count=0
-  for i in $HEAD_SS; do
-  count=$((count+1))
-  COL_NUM_EXP_MOD[$i]=$count
-  done
-
-  unset COL_NUM_FOR
-  declare -A COL_NUM_FOR
-  count=0
-  for i in $(head -n 1 $GRS_FORMATING_FILE); do
-  count=$((count+1))
-  COL_NUM_FOR[$i]=$count
-  done
-
-  SAMPLE_SIZE_EXPOSURE_MODEL=$(awk 'BEGIN{FS=OFS="\t"}NR>1 && $('${COL_NUM_FOR["trait_name"]}')=="'$EXPOSURE_MODEL'"{print $('${COL_NUM_FOR["N_total"]}')}' $GRS_FORMATING_FILE)
-  N_CASE_EXPOSURE_MODEL=$(awk 'BEGIN{FS=OFS="\t"}NR>1 && $('${COL_NUM_FOR["trait_name"]}')=="'$EXPOSURE_MODEL'"{print $('${COL_NUM_FOR["N_case"]}')}' $GRS_FORMATING_FILE)
-  N_CONTROL_EXPOSURE_MODEL=$(awk 'BEGIN{FS=OFS="\t"}NR>1 && $('${COL_NUM_FOR["trait_name"]}')=="'$EXPOSURE_MODEL'"{print $('${COL_NUM_FOR["N_ctrl"]}')}' $GRS_FORMATING_FILE)
-
-  if [ $SUMSTAT_FILE_ZIP == "true" ]; then
-    gzip -cd $SUMSTAT_FILE | awk 'BEGIN{FS=OFS="\t"}NR>1 && (length($('${COL_NUM_EXP_MOD["ref"]}'))+length($('${COL_NUM_EXP_MOD["alt"]}'))==2) && $('${COL_NUM_EXP_MOD["effect_size"]}')!=0{print "'$EXPOSURE_MODEL'",$('${COL_NUM_EXP_MOD["chr_hg19"]}')"_"$('${COL_NUM_EXP_MOD["pos_hg19"]}')"_"$('${COL_NUM_EXP_MOD["ref"]}')"_"$('${COL_NUM_EXP_MOD["alt"]}'),$('${COL_NUM_EXP_MOD["chr_hg19"]}'), $('${COL_NUM_EXP_MOD["pos_hg19"]}'),$('${COL_NUM_EXP_MOD["ref"]}'),$('${COL_NUM_EXP_MOD["alt"]}'),$('${COL_NUM_EXP_MOD["effect_size"]}'),$('${COL_NUM_EXP_MOD["standard_error"]}'),$('${COL_NUM_EXP_MOD["EAF"]}'),$('${COL_NUM_EXP_MOD["pvalue"]}'),"NA","NA","'$SAMPLE_SIZE_EXPOSURE_MODEL'", "'$N_CASE_EXPOSURE_MODEL'", "'$N_CONTROL_EXPOSURE_MODEL'"}' - | awk 'BEGIN{FS=OFS="\t"} NR==FNR {snp[$1,$2,$3,$4]=1;snp[$1,$2,$4,$3]=1;next}snp[$3,$4,$5,$6]==1{print}' list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} - > EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp
-  else
-    awk 'BEGIN{FS=OFS="\t"}NR>1 && (length($('${COL_NUM_EXP_MOD["ref"]}'))+length($('${COL_NUM_EXP_MOD["alt"]}'))==2) && $('${COL_NUM_EXP_MOD["beta_raw"]}')!=0{print "'$EXPOSURE_MODEL'",$('${COL_NUM_EXP_MOD["chr"]}')"_"$('${COL_NUM_EXP_MOD["pos"]}')"_"$('${COL_NUM_EXP_MOD["ref"]}')"_"$('${COL_NUM_EXP_MOD["alt"]}'),$('${COL_NUM_EXP_MOD["chr"]}'), $('${COL_NUM_EXP_MOD["pos"]}'),$('${COL_NUM_EXP_MOD["ref"]}'),$('${COL_NUM_EXP_MOD["alt"]}'),$('${COL_NUM_EXP_MOD["beta_raw"]}'),$('${COL_NUM_EXP_MOD["se"]}'),$('${COL_NUM_EXP_MOD["study_AF"]}'),$('${COL_NUM_EXP_MOD["pvalue"]}'),"NA","NA","'$SAMPLE_SIZE_EXPOSURE_MODEL'", "'$N_CASE_EXPOSURE_MODEL'", "'$N_CONTROL_EXPOSURE_MODEL'"}' $SUMSTAT_FILE | awk 'BEGIN{FS=OFS="\t"} NR==FNR {snp[$1,$2,$3,$4]=1;snp[$1,$2,$4,$3]=1;next}snp[$3,$4,$5,$6]==1{print}' list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} - > EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp
-  fi
-
-  unset COL_NUM
-  count=0
-  declare -A COL_NUM
-  for name in $(head -n 1 EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}) ; do
-  count=$((count+1))
-  COL_NUM[$name]=$count
-  done
-
-  ETH_EXPOSURE_MODEL=$(awk 'BEGIN{FS=OFS="\t"}NR>1 && $('${COL_NUM_FOR["trait_name"]}')=="'$EXPOSURE_MODEL'"{print $('${COL_NUM_FOR["Ancestry"]}')}' $GRS_FORMATING_FILE)
-
-  if [ $ETH_EXPOSURE_MODEL != "TRANS_ETHNIC" ] && [ $ETH_EXPOSURE_MODEL != "" ]; then
-    if [ $(awk 'BEGIN{FS=OFS="\t"}$('${COL_NUM["ncase"]}')!=NA && $('${COL_NUM["ncase"]}')!="" && $('${COL_NUM["ncontrol"]}')!="NA" && $('${COL_NUM["ncontrol"]}')!="" && $('${COL_NUM["eaf"]}') == "NA"{ print $('${COL_NUM["eaf"]}')}' EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp | wc -l) -gt 0 ] || [ $(awk 'BEGIN{FS=OFS="\t"} $('${COL_NUM["ncase"]}')!=NA && $('${COL_NUM["ncase"]}')!="" && $('${COL_NUM["ncontrol"]}')!=NA && $('${COL_NUM["ncontrol"]}')!="" && $('${COL_NUM["eaf"]}')==""{ print $('${COL_NUM["eaf"]}')}' EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp | wc -l) -gt 0 ]; then
-      
-      if [ "$ETH_EXPOSURE_MODEL" == "AFR" ]; then
-        POP=("AFRICAN")
-      elif [ "$ETH_EXPOSURE_MODEL" == "EAS" ]; then
-        POP=("EAST_ASIAN")
-      elif [ "$ETH_EXPOSURE_MODEL" == "SAS" ]; then
-        POP=("SOUTH_ASIAN")
-      elif [ "$ETH_EXPOSURE_MODEL" == "EUR" ]; then
-        POP=("EUROPEAN")
-      elif [ "$ETH_EXPOSURE_MODEL" == "AMR" ]; then
-        POP=("LATIN")
-      fi
-
-      PURE_GENO_DIR=/genetics/PAREG/perrotn/PURE/IMPUTED_GENOTYPES_TOPMED_HG19/${POP}/
-
-      # TEST
-      # chr=$(awk 'BEGIN{FS=OFS="\t"}{print $('${COL_NUM["chr"]}')}' EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp | sort -u)
-      for chr in $(awk 'BEGIN{FS=OFS="\t"}{print $('${COL_NUM["chr"]}')}' EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp | sort -u)
-      do
-        PURE_input=${PURE_GENO_DIR}${chr}.IMP_QC_HG19
-
-        awk 'BEGIN{FS=OFS="\t"}NR==FNR{SNP[$2]=1;next}SNP["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["effect_allele"]}')":"$('${COL_NUM["other_allele"]}')]==1{print "chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["effect_allele"]}')":"$('${COL_NUM["other_allele"]}')}SNP["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["other_allele"]}')":"$('${COL_NUM["effect_allele"]}')]{print "chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["other_allele"]}')":"$('${COL_NUM["effect_allele"]}')}' ${PURE_input}.bim EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp | sort -u > EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_ids
-
-        if [ ! -s EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_ids ]
-        then
-          echo "NO SNP REMAIN, CHR:" $chr
-          rm -f EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_ids
-          continue
-        else
-          $plink2 \
-          --bfile $PURE_input \
-          --keep /genetics/PAREG/common/PURE_DATA/GENOTYPING/PURE_PMRA_COMBINED_2020_01_06.FINAL.fam \
-          --extract EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_ids \
-          --freqx \
-          --out temp_freqx_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
-
-          if [ -f temp_freqx_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}.frqx ]; then # chekc if xxx.frqx exists as something summary stat include only top SNPs that are not in PURE
-          awk 'BEGIN{FS=OFS="\t"} NR>1 && $5<$7 {print $2, $3} NR>1 && $7<$5 {print $2, $4}' temp_freqx_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}.frqx > temp_minor_alleles_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
-
-          awk 'NR>1{print $2}' temp_freqx_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}.frqx > temp_snps_to_extract_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
-
-          rm -f temp_freqx_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}*
-
-          $plink2 \
-          --bfile $PURE_input \
-          --keep /genetics/PAREG/common/PURE_DATA/GENOTYPING/PURE_PMRA_COMBINED_2020_01_06.FINAL.fam \
-          --extract temp_snps_to_extract_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} \
-          --freq \
-          --out temp_freq_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
+echo $(echo $(wc -l list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} | awk '{print $1}' - ) "SIGNIFICANT SNPs" $POPULATION $PANEL $ASSAY $GENE)
 
 
-          awk 'BEGIN{OFS="\t"} NR==FNR {MAF[$2]=$5;next}MAF[$1]!=""{$0=$0;print $0,MAF[$1]}' temp_freq_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}.frq temp_minor_alleles_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} > temp_minor_alleles_MAF_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
+echo "" | awk 'BEGIN{FS=OFS="\t";print "Phenotype","SNP","chr","pos","other_allele","effect_allele", "beta","se","eaf","pval","units","gene","samplesize","ncase","ncontrol"}' - > ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
 
-          awk 'BEGIN{OFS="\t"} NR==FNR {SNP[$1]=1;MA[$1]=$2;MAF[$1]=$3;next}
-          MA["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["other_allele"]}')":"$('${COL_NUM["effect_allele"]}')]==$('${COL_NUM["effect_allele"]}') && SNP["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["other_allele"]}')":"$('${COL_NUM["effect_allele"]}')]!=""{$('${COL_NUM["eaf"]}')=MAF["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["other_allele"]}')":"$('${COL_NUM["effect_allele"]}')];print $0}
-          MA["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["other_allele"]}')":"$('${COL_NUM["effect_allele"]}')]==$('${COL_NUM["other_allele"]}') && SNP["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["other_allele"]}')":"$('${COL_NUM["effect_allele"]}')]!=""{$('${COL_NUM["eaf"]}')=1-MAF["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["other_allele"]}')":"$('${COL_NUM["effect_allele"]}')];print $0}
-          MA["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["effect_allele"]}')":"$('${COL_NUM["other_allele"]}')]==$('${COL_NUM["other_allele"]}') && SNP["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["effect_allele"]}')":"$('${COL_NUM["other_allele"]}')]!=""{$('${COL_NUM["eaf"]}')=MAF["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["effect_allele"]}')":"$('${COL_NUM["other_allele"]}')];print $0}
-          MA["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["effect_allele"]}')":"$('${COL_NUM["other_allele"]}')]==$('${COL_NUM["effect_allele"]}') && SNP["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["effect_allele"]}')":"$('${COL_NUM["other_allele"]}')]!=""{$('${COL_NUM["eaf"]}')=1-MAF["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["effect_allele"]}')":"$('${COL_NUM["other_allele"]}')];print $0}
-          ' temp_minor_alleles_MAF_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp | awk 'BEGIN{FS=OFS="\t"}$('${COL_NUM["eaf"]}')<0.99 && $('${COL_NUM["eaf"]}')>0.01{print}' - > EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp2
-          fi
-
-          rm -f temp_freq_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}* \
-          temp_minor_alleles_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} \
-          temp_snps_to_extract_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} \
-          temp_freq_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}* \
-          temp_minor_alleles_MAF_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} \
-          EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_ids
-
-
-        fi
-
-      done # END chr LOOP
-
-      if [ $(awk 'BEGIN{FS=OFS="\t"}{print $1}' EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp | wc -l) -eq 0 ] # NO SNP
-      then
-        exit 1
-      fi
-
-      awk 'BEGIN{FS=OFS="\t"}($('${COL_NUM["eaf"]}')=="NA" || $('${COL_NUM["eaf"]}')<0.99 || $('${COL_NUM["eaf"]}')>0.01){print}' EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp2 >> EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
-      rm -f EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp2
-
-    else
-      cat EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp >> EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
-    fi
-  fi
-
-
-  # UPDATED LIST SNPS
-  awk 'BEGIN{FS=OFS="\t"}NR==FNR{SNP[$1,$2,$3,$4]=1;SNP[$1,$2,$4,$3]=1;next}SNP[$('${COL_NUM["chr"]}'), $('${COL_NUM["pos"]}'), $('${COL_NUM["other_allele"]}'), $('${COL_NUM["effect_allele"]}')]==1{print $('${COL_NUM["chr"]}'), $('${COL_NUM["pos"]}'), $('${COL_NUM["other_allele"]}'), $('${COL_NUM["effect_allele"]}')}' list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} | sort -u > list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp
-  mv list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
-
-  rm -f EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp
-
-done # END EXPOSURE_MODEL LOOP
-
-####### OUTCOME #######
-echo "" | awk 'BEGIN{FS=OFS="\t";print "Phenotype","SNP","chr","pos","beta","se","effect_allele","other_allele","eaf","pval","units","gene","samplesize","ncase","ncontrol"}' > ${BIOMARKER_OUTCOME_DIR}/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
-
-if [ -f ${GRS_DIR_1}${OUTCOME}/8_final ] || [ -f ${GRS_DIR_2}${OUTCOME}/4_final.txt.gz ]; then
-  if [ -f ${GRS_DIR_2}${OUTCOME}/4_final.txt.gz ]; then
-    SUMSTAT_FILE=${GRS_DIR_2}${OUTCOME}/4_final.txt.gz
-    SUMSTAT_FILE_ZIP="true"
-  else
-    SUMSTAT_FILE=${GRS_DIR_1}${OUTCOME}/8_final
-    SUMSTAT_FILE_ZIP="false"
-  fi
-else
-  echo $OUTCOME | cat - >> ${ROOT_OUTPUT_DIR}MISSING_OUTCOMES
-  cd $ROOT_OUTPUT_DIR || exit 1
-  rm -r $OUTPUT_DIR
-  exit 1
-fi
-
-
-if [ $SUMSTAT_FILE_ZIP == "true" ]; then
-HEAD_SS=$(gzip -cd $SUMSTAT_FILE | head -n 1 -)
-else
-HEAD_SS=$(head -n 1 $SUMSTAT_FILE)
-fi
-
-unset COL_NUM_OUT
-declare -A COL_NUM_OUT
+unset COL_NUM
 count=0
-for i in $HEAD_SS; do
+declare -A COL_NUM
+for name in $(head -n 1 ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}) ; do
 count=$((count+1))
-COL_NUM_OUT[$i]=$count
+COL_NUM[$name]=$count
 done
 
 unset COL_NUM_FOR
@@ -297,147 +154,109 @@ count=$((count+1))
 COL_NUM_FOR[$i]=$count
 done
 
+EXPOSURE_MODEL="ESUS_CCSc_EUR_SiGN_2019"
+for EXPOSURE_MODEL in $(awk 'BEGIN{FS=OFS="\t"}NR>1{print}' $LIST_EXPOSURES)
+do
+  echo $EXPOSURE_MODEL
+
+  if [ -f ${GRS_DIR}${EXPOSURE_MODEL}/4_final.txt.gz ]; then
+      SUMSTAT_FILE=${GRS_DIR}${EXPOSURE_MODEL}/4_final.txt.gz
+  else
+    echo $EXPOSURE_MODEL | cat - >> ${ROOT_OUTPUT_DIR}MISSING_EXPOSURE_MODEL
+    cd $ROOT_OUTPUT_DIR || exit 1
+    rm -r $OUTPUT_DIR
+    exit 1
+  fi
+
+  HEAD_SS=$(gzip -cd $SUMSTAT_FILE | head -n 1 -)
+
+  unset COL_NUM_EXP_MOD
+  declare -A COL_NUM_EXP_MOD
+  count=0
+  for i in $HEAD_SS; do
+  count=$((count+1))
+  COL_NUM_EXP_MOD[$i]=$count
+  done
+
+  SAMPLE_SIZE_EXPOSURE_MODEL=$(awk 'BEGIN{FS=OFS="\t"}NR>1 && $('${COL_NUM_FOR["trait_name"]}')=="'$EXPOSURE_MODEL'"{print $('${COL_NUM_FOR["N_total"]}')}' $GRS_FORMATING_FILE)
+  N_CASE_EXPOSURE_MODEL=$(awk 'BEGIN{FS=OFS="\t"}NR>1 && $('${COL_NUM_FOR["trait_name"]}')=="'$EXPOSURE_MODEL'"{print $('${COL_NUM_FOR["N_case"]}')}' $GRS_FORMATING_FILE)
+  N_CONTROL_EXPOSURE_MODEL=$(awk 'BEGIN{FS=OFS="\t"}NR>1 && $('${COL_NUM_FOR["trait_name"]}')=="'$EXPOSURE_MODEL'"{print $('${COL_NUM_FOR["N_ctrl"]}')}' $GRS_FORMATING_FILE)
+  
+  ETH_EXPOSURE_MODEL=$(awk 'BEGIN{FS=OFS="\t"}NR>1 && $('${COL_NUM_FOR["trait_name"]}')=="'$EXPOSURE_MODEL'"{print $('${COL_NUM_FOR["Ancestry"]}')}' $GRS_FORMATING_FILE)
+
+
+  # USE GNOMAD EAF IF MISSING
+  if [ $(awk 'BEGIN{FS=OFS="\t"}NR>1 && $('${COL_NUM_FOR["trait_name"]}')=="'$EXPOSURE_MODEL'" {print $('${COL_NUM_FOR["EAF"]}')}' $GRS_FORMATING_FILE) == "NA" ] && [ $ETH_EXPOSURE_MODEL != "TRANS_ETHNIC" ]; then
+    gzip -cd $SUMSTAT_FILE | awk 'BEGIN{FS=OFS="\t"}NR>1 && (length($('${COL_NUM_EXP_MOD["ref"]}'))+length($('${COL_NUM_EXP_MOD["alt"]}'))==2) && $('${COL_NUM_EXP_MOD["effect_size"]}')!=0{print "'$EXPOSURE_MODEL'",$('${COL_NUM_EXP_MOD["chr_hg19"]}')"_"$('${COL_NUM_EXP_MOD["pos_hg19"]}')"_"$('${COL_NUM_EXP_MOD["ref"]}')"_"$('${COL_NUM_EXP_MOD["alt"]}'),$('${COL_NUM_EXP_MOD["chr_hg19"]}'), $('${COL_NUM_EXP_MOD["pos_hg19"]}'),$('${COL_NUM_EXP_MOD["ref"]}'),$('${COL_NUM_EXP_MOD["alt"]}'),$('${COL_NUM_EXP_MOD["effect_size"]}'),$('${COL_NUM_EXP_MOD["standard_error"]}'),$('${COL_NUM_EXP_MOD["gnomAD_AF_"${ETH_EXPOSURE_MODEL}]}'),$('${COL_NUM_EXP_MOD["pvalue"]}'),"NA","NA","'$SAMPLE_SIZE_EXPOSURE_MODEL'", "'$N_CASE_EXPOSURE_MODEL'", "'$N_CONTROL_EXPOSURE_MODEL'"}' - | awk 'BEGIN{FS=OFS="\t"} NR==FNR {snp[$1,$2,$3,$4]=1;snp[$1,$2,$4,$3]=1;next}snp[$3,$4,$5,$6]==1{print}' list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} - > ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp
+  else 
+    gzip -cd $SUMSTAT_FILE | awk 'BEGIN{FS=OFS="\t"}NR>1 && (length($('${COL_NUM_EXP_MOD["ref"]}'))+length($('${COL_NUM_EXP_MOD["alt"]}'))==2) && $('${COL_NUM_EXP_MOD["effect_size"]}')!=0{print "'$EXPOSURE_MODEL'",$('${COL_NUM_EXP_MOD["chr_hg19"]}')"_"$('${COL_NUM_EXP_MOD["pos_hg19"]}')"_"$('${COL_NUM_EXP_MOD["ref"]}')"_"$('${COL_NUM_EXP_MOD["alt"]}'),$('${COL_NUM_EXP_MOD["chr_hg19"]}'), $('${COL_NUM_EXP_MOD["pos_hg19"]}'),$('${COL_NUM_EXP_MOD["ref"]}'),$('${COL_NUM_EXP_MOD["alt"]}'),$('${COL_NUM_EXP_MOD["effect_size"]}'),$('${COL_NUM_EXP_MOD["standard_error"]}'),$('${COL_NUM_EXP_MOD["EAF"]}'),$('${COL_NUM_EXP_MOD["pvalue"]}'),"NA","NA","'$SAMPLE_SIZE_EXPOSURE_MODEL'", "'$N_CASE_EXPOSURE_MODEL'", "'$N_CONTROL_EXPOSURE_MODEL'"}' - | awk 'BEGIN{FS=OFS="\t"} NR==FNR {snp[$1,$2,$3,$4]=1;snp[$1,$2,$4,$3]=1;next}snp[$3,$4,$5,$6]==1{print}' list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} - > ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp
+  fi 
+
+  # IF SOME MISSING EAF
+  if [ $(awk 'BEGIN{FS=OFS="\t"}NR>1 && ($('${COL_NUM["eaf"]}') == NA || $('${COL_NUM["eaf"]}') == "NA" || $('${COL_NUM["eaf"]}') == ""){print $0}' ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp | wc -l) -gt 0 ] && [ $ETH_EXPOSURE_MODEL != "TRANS_ETHNIC" ];then
+    gzip -cd $SUMSTAT_FILE | awk 'BEGIN{FS=OFS="\t"}NR>1{print $('${COL_NUM_EXP_MOD["chr_hg19"]}')"_"$('${COL_NUM_EXP_MOD["pos_hg19"]}')"_"$('${COL_NUM_EXP_MOD["ref"]}')"_"$('${COL_NUM_EXP_MOD["alt"]}'),$('${COL_NUM_EXP_MOD["gnomAD_AF_"${ETH_EXPOSURE_MODEL}]}')}' - | awk 'BEGIN{FS=OFS="\t"}NR==FNR{MAF[$1]=$5;next} MAF[$('${COL_NUM["SNP"]}')]!="" && MAF[$('${COL_NUM["SNP"]}')]!=NA && MAF[$('${COL_NUM["SNP"]}')]!="NA" && ($('${COL_NUM["eaf"]}')== "" ||  $('${COL_NUM["eaf"]}')=="NA" ||  $('${COL_NUM["eaf"]}') == NA) {$('${COL_NUM["eaf"]}')=MAF[$('${COL_NUM["SNP"]}')]; print $0}{print $0}' - ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp > ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp2
+    mv ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp2 ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp
+  fi
+
+  # UPDATED LIST SNPS
+  awk 'BEGIN{FS=OFS="\t"}NR==FNR{SNP[$1,$2,$3,$4]=1;SNP[$1,$2,$4,$3]=1;next}SNP[$('${COL_NUM["chr"]}'), $('${COL_NUM["pos"]}'), $('${COL_NUM["other_allele"]}'), $('${COL_NUM["effect_allele"]}')]==1{print $('${COL_NUM["chr"]}'), $('${COL_NUM["pos"]}'), $('${COL_NUM["other_allele"]}'), $('${COL_NUM["effect_allele"]}')}' list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp | sort -u > list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp
+  mv list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
+
+
+  echo $(echo $(wc -l list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} | awk '{print $1}' - ) "SNPs IN COMMON")
+
+  cat ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp > ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp2
+  mv ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp2 ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
+  rm -f ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp
+
+  # UPDATE ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_
+  awk 'BEGIN{FS=OFS="\t"}NR==FNR{SNP[$1"_"$2"_"$3"_"$4]=1;SNP[$1"_"$2"_"$4"_"$3]=1;next}FNR==1 || SNP[$('${COL_NUM["SNP"]}')]==1{print $0}' list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} > ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp
+  mv ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp ${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
+
+done # END EXPOSURE_MODEL LOOP
+
+
+####### OUTCOME #######
+echo "" | awk 'BEGIN{FS=OFS="\t";print "Phenotype","SNP","chr","pos","beta","se","effect_allele","other_allele","eaf","pval","units","gene","samplesize","ncase","ncontrol"}' > $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
+
+
+if [ -f ${GRS_DIR}${OUTCOME}/4_final.txt.gz ]; then
+    SUMSTAT_FILE=${GRS_DIR}${OUTCOME}/4_final.txt.gz
+else
+  echo $OUTCOME | cat - >> ${ROOT_OUTPUT_DIR}MISSING_OUTCOMES
+  cd $ROOT_OUTPUT_DIR || exit 1
+  rm -r $OUTPUT_DIR
+  exit 1
+fi
+
+HEAD_SS=$(gzip -cd $SUMSTAT_FILE | head -n 1 -)
+
+unset COL_NUM_OUT
+declare -A COL_NUM_OUT
+count=0
+for i in $HEAD_SS; do
+count=$((count+1))
+COL_NUM_OUT[$i]=$count
+done
+
+
 SAMPLE_SIZE_OUTCOME=$(awk 'BEGIN{FS=OFS="\t"}NR>1 && $('${COL_NUM_FOR["trait_name"]}')=="'$OUTCOME'"{print $('${COL_NUM_FOR["N_total"]}')}' $GRS_FORMATING_FILE)
 N_CASE_OUTCOME=$(awk 'BEGIN{FS=OFS="\t"}NR>1 && $('${COL_NUM_FOR["trait_name"]}')=="'$OUTCOME'"{print $('${COL_NUM_FOR["N_case"]}')}' $GRS_FORMATING_FILE)
 N_CONTROL_OUTCOME=$(awk 'BEGIN{FS=OFS="\t"}NR>1 && $('${COL_NUM_FOR["trait_name"]}')=="'$OUTCOME'"{print $('${COL_NUM_FOR["N_ctrl"]}')}' $GRS_FORMATING_FILE)
+ETH_OUTCOME=$(awk 'BEGIN{FS=OFS="\t"}NR>1 && $('${COL_NUM_FOR["trait_name"]}')=="'$OUTCOME'"{print $('${COL_NUM_FOR["Ancestry"]}')}' $GRS_FORMATING_FILE)
 
-if [ $SUMSTAT_FILE_ZIP == "true" ]; then
 gzip -cd $SUMSTAT_FILE | awk 'BEGIN{FS=OFS="\t"}NR>1 && (length($('${COL_NUM_OUT["ref"]}'))+length($('${COL_NUM_OUT["alt"]}'))==2) && $('${COL_NUM_OUT["effect_size"]}')!=0{print "'$OUTCOME'",$('${COL_NUM_OUT["chr_hg19"]}')"_"$('${COL_NUM_OUT["pos_hg19"]}')"_"$('${COL_NUM_OUT["ref"]}')"_"$('${COL_NUM_OUT["alt"]}'),$('${COL_NUM_OUT["chr_hg19"]}'), $('${COL_NUM_OUT["pos_hg19"]}'), $('${COL_NUM_OUT["effect_size"]}'),$('${COL_NUM_OUT["standard_error"]}'),$('${COL_NUM_OUT["alt"]}'),$('${COL_NUM_OUT["ref"]}'),$('${COL_NUM_OUT["EAF"]}'),$('${COL_NUM_OUT["pvalue"]}'),"NA","NA","'$SAMPLE_SIZE_OUTCOME'", "'$N_CASE_OUTCOME'", "'$N_CONTROL_OUTCOME'"}' - | awk 'BEGIN{FS=OFS="\t"} NR==FNR {snp[$1,$2,$3,$4]=1;snp[$1,$2,$4,$3]=1;next}snp[$3,$4,$7,$8]==1{print}' list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} - >> $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
-else
-awk 'BEGIN{FS=OFS="\t"}NR>1 && (length($('${COL_NUM_OUT["ref"]}'))+length($('${COL_NUM_OUT["alt"]}'))==2) && $('${COL_NUM_OUT["beta_raw"]}')!=0{print "'$OUTCOME'",$('${COL_NUM_OUT["chr"]}')"_"$('${COL_NUM_OUT["pos"]}')"_"$('${COL_NUM_OUT["ref"]}')"_"$('${COL_NUM_OUT["alt"]}'),$('${COL_NUM_OUT["chr"]}'), $('${COL_NUM_OUT["pos"]}'), $('${COL_NUM_OUT["beta_raw"]}'),$('${COL_NUM_OUT["se"]}'),$('${COL_NUM_OUT["alt"]}'),$('${COL_NUM_OUT["ref"]}'),$('${COL_NUM_OUT["study_AF"]}'),$('${COL_NUM_OUT["pvalue"]}'),"NA","NA","'$SAMPLE_SIZE_OUTCOME'", "'$N_CASE_OUTCOME'", "'$N_CONTROL_OUTCOME'"}' $SUMSTAT_FILE | awk 'BEGIN{FS=OFS="\t"} NR==FNR {snp[$1,$2,$3,$4]=1;snp[$1,$2,$4,$3]=1;next}snp[$3,$4,$7,$8]==1{print}' list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} - >> $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
-fi
 
 echo "### N SNPs OUTCOME_MRBASE.FORMAT" $(awk 'BEGIN{FS=OFS="\t"}NR>1{print}' $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} | wc -l ) "###"
 
 if [ $(awk 'BEGIN{FS=OFS="\t"}NR>1{print}' $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} | wc -l) -eq 0 ];then
-  echo "NO OUTCOME_MRBASE.FORMAT OUTCOME" $OUTCOME "PANEL" $PANEL "CIS" ${CIS_WINDOW} "P-VALUE" ${PVALUE_THRESHOLD} "LD THRESHOLD" ${LD_THRESHOLD_PRUNING} > ${ROOT_OUTPUT_DIR}exit_${PANEL}_${OUTCOME}_${CIS_WINDOW}_${PVALUE_THRESHOLD}_${LD_THRESHOLD_PRUNING}_${MODEL}
-  rm -f list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_${MODEL} \
+  echo "NO OUTCOME_MRBASE.FORMAT OUTCOME" $OUTCOME "PANEL" $PANEL "CIS" ${CIS_WINDOW} "P-VALUE" ${PVALUE_THRESHOLD} "LD THRESHOLD" ${LD_THRESHOLD_PRUNING} > ${ROOT_OUTPUT_DIR}exit_${PANEL}_${OUTCOME}_${CIS_WINDOW}_${PVALUE_THRESHOLD}_${LD_THRESHOLD_PRUNING}
+  rm -f list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} \
   $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
   exit 1
 fi
 
 rm -f list_SNPs_exposures_PANEL_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
-
-
-unset COL_NUM
-count=0
-declare -A COL_NUM
-for name in $(head -n 1 $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}) ; do
-count=$((count+1))
-COL_NUM[$name]=$count
-done
-
-unset col_num
-declare -A col_num
-count=0
-for i in $(head -n 1 $IVs_PURE); do
-count=$((count+1))
-col_num[$i]=$count
-done
-
-ETH_OUTCOME=$(awk 'BEGIN{FS=OFS="\t"}NR>1 && $('${COL_NUM_FOR["trait_name"]}')=="'$OUTCOME'"{print $('${COL_NUM_FOR["Ancestry"]}')}' $GRS_FORMATING_FILE)
-
-if [ $ETH_OUTCOME != "TRANS_ETHNIC" ] && [ $ETH_OUTCOME != "" ]; then
-  # if binary outcome ("ncase" & "ncontrol" != NA, "") need EAF (for r2 calculation), if EAF empty, impute it
-  if [ $(awk 'BEGIN{FS=OFS="\t"}NR>1 && $('${COL_NUM["ncase"]}')!=NA && $('${COL_NUM["ncase"]}')!="" && $('${COL_NUM["ncontrol"]}')!="NA" && $('${COL_NUM["ncontrol"]}')!="" && $('${COL_NUM["eaf"]}') == "NA"{ print $('${COL_NUM["eaf"]}')}' $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} | wc -l) -gt 0 ] || [ $(awk 'BEGIN{FS=OFS="\t"}NR>1 && $('${COL_NUM["ncase"]}')!=NA && $('${COL_NUM["ncase"]}')!="" && $('${COL_NUM["ncontrol"]}')!=NA && $('${COL_NUM["ncontrol"]}')!="" && $('${COL_NUM["eaf"]}')==""{ print $('${COL_NUM["eaf"]}')}' $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} | wc -l) -gt 0 ]; then
-    
-    if [ "$ETH_OUTCOME" == "AFR" ]; then
-      POP=("AFRICAN")
-    elif [ "$ETH_OUTCOME" == "EAS" ]; then
-      POP=("EAST_ASIAN")
-    elif [ "$ETH_OUTCOME" == "SAS" ]; then
-      POP=("SOUTH_ASIAN")
-    elif [ "$ETH_OUTCOME" == "EUR" ]; then
-      POP=("EUROPEAN")
-    elif [ "$ETH_OUTCOME" == "AMR" ]; then
-      POP=("LATIN")
-    fi
-
-
-    head -n1 $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} > $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_temp
-    PURE_GENO_DIR=/genetics/PAREG/perrotn/PURE/IMPUTED_GENOTYPES_TOPMED_HG19/${POP}/
-
-    # TEST
-    # chr=22
-    for chr in $(awk 'BEGIN{FS=OFS="\t"}NR>1{print $('${COL_NUM["chr"]}')}' $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} | sort -u)
-    do
-      PURE_input=${PURE_GENO_DIR}${chr}.IMP_QC_HG19
-
-      awk 'BEGIN{FS=OFS="\t"}NR==FNR{SNP[$2]=1;next}SNP["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["effect_allele"]}')":"$('${COL_NUM["other_allele"]}')]==1{print "chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["effect_allele"]}')":"$('${COL_NUM["other_allele"]}')}SNP["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["other_allele"]}')":"$('${COL_NUM["effect_allele"]}')]{print "chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["other_allele"]}')":"$('${COL_NUM["effect_allele"]}')}' ${PURE_input}.bim $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} | sort -u > $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_ids
-
-      if [ ! -s $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_ids ]
-      then
-        echo "NO SNP REMAIN, CHR:" $chr
-        rm -f $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_ids
-        continue
-      else
-        $plink2 \
-        --bfile $PURE_input \
-        --keep /genetics/PAREG/common/PURE_DATA/GENOTYPING/PURE_PMRA_COMBINED_2020_01_06.FINAL.fam \
-        --extract $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_ids \
-        --freqx \
-        --out temp_freqx_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
-
-        if [ -f temp_freqx_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}.frqx ]; then # chekc if xxx.frqx exists as something summary stat include only top SNPs that are not in PURE
-        awk 'BEGIN{FS=OFS="\t"} NR>1 && $5<$7 {print $2, $3} NR>1 && $7<$5 {print $2, $4}' temp_freqx_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}.frqx > temp_minor_alleles_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
-
-        awk 'NR>1{print $2}' temp_freqx_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}.frqx > temp_snps_to_extract_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
-
-        rm -f temp_freqx_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}*
-
-        $plink2 \
-        --bfile $PURE_input \
-        --keep /genetics/PAREG/common/PURE_DATA/GENOTYPING/PURE_PMRA_COMBINED_2020_01_06.FINAL.fam \
-        --extract temp_snps_to_extract_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} \
-        --freq \
-        --out temp_freq_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
-
-
-        awk 'BEGIN{OFS="\t"} NR==FNR {MAF[$2]=$5;next}MAF[$1]!=""{$0=$0;print $0,MAF[$1]}' temp_freq_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}.frq temp_minor_alleles_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} > temp_minor_alleles_MAF_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
-
-        awk 'BEGIN{OFS="\t"} NR==FNR {SNP[$1]=1;MA[$1]=$2;MAF[$1]=$3;next}
-        MA["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["other_allele"]}')":"$('${COL_NUM["effect_allele"]}')]==$('${COL_NUM["effect_allele"]}') && SNP["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["other_allele"]}')":"$('${COL_NUM["effect_allele"]}')]!=""{$('${COL_NUM["eaf"]}')=MAF["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["other_allele"]}')":"$('${COL_NUM["effect_allele"]}')];print $0}
-        MA["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["other_allele"]}')":"$('${COL_NUM["effect_allele"]}')]==$('${COL_NUM["other_allele"]}') && SNP["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["other_allele"]}')":"$('${COL_NUM["effect_allele"]}')]!=""{$('${COL_NUM["eaf"]}')=1-MAF["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["other_allele"]}')":"$('${COL_NUM["effect_allele"]}')];print $0}
-        MA["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["effect_allele"]}')":"$('${COL_NUM["other_allele"]}')]==$('${COL_NUM["effect_allele"]}') && SNP["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["effect_allele"]}')":"$('${COL_NUM["other_allele"]}')]!=""{$('${COL_NUM["eaf"]}')=MAF["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["effect_allele"]}')":"$('${COL_NUM["other_allele"]}')];print $0}
-        MA["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["effect_allele"]}')":"$('${COL_NUM["other_allele"]}')]==$('${COL_NUM["other_allele"]}') && SNP["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["effect_allele"]}')":"$('${COL_NUM["other_allele"]}')]!=""{$('${COL_NUM["eaf"]}')=1-MAF["chr"$('${COL_NUM["chr"]}')":"$('${COL_NUM["pos"]}')":"$('${COL_NUM["effect_allele"]}')":"$('${COL_NUM["other_allele"]}')];print $0}
-        ' temp_minor_alleles_MAF_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} | awk 'BEGIN{FS=OFS="\t"}$('${COL_NUM["eaf"]}')<0.99 && $('${COL_NUM["eaf"]}')>0.01{print}' - >> $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp
-        fi
-
-        rm -f temp_freq_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}* \
-        temp_minor_alleles_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} \
-        temp_snps_to_extract_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} \
-        temp_freq_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}* \
-        temp_minor_alleles_MAF_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} \
-        $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_ids
-
-
-      fi
-
-    done # END chr LOOP
-
-     if [ $(awk 'BEGIN{FS=OFS="\t"}{print $1}' $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp | wc -l) -eq 1 ] # NO SNP
-     then
-      echo "NO SNP REMAIN"
-      echo "OUTCOME:" $OUTCOME
-      echo "PANEL:" $PANEL
-      echo "CIS_WINDOW:" $CIS_WINDOW
-      echo "PVALUE_THRESHOLD:" $PVALUE_THRESHOLD
-      echo "LD_THRESHOLD_PRUNING:" $LD_THRESHOLD_PRUNING
-      echo "SUFFFIX:" $SUFFIX
-      echo "GRS_FORMATING_FILE:" $GRS_FORMATING_FILE
-      exit 1
-    fi
-
-    head -n 1 $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} > $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp2
-    cat $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp >> $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp2
-    mv $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp2 $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
-    rm -f $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp
-  fi
-fi
-
-head -n1 $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} > $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp
-awk 'BEGIN{FS=OFS="\t"}NR>1 && ($('${COL_NUM["eaf"]}')=="NA" || $('${COL_NUM["eaf"]}')<0.99 || $('${COL_NUM["eaf"]}')>0.01){print}' $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL} > $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp
-mv $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}_temp $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
 
 mkdir -p 1_MATCH_TO_CONSORTIA
 
@@ -449,6 +268,22 @@ mkdir -p 4_EXTRACT_EXPOSURES
 
 mkdir -p 5_MR_RESULTS
 
+unset COL_NUM_OUT
+count=0
+declare -A COL_NUM_OUT
+for name in $(head -n 1 $BIOMARKER_OUTCOME_DIR/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}) ; do
+count=$((count+1))
+COL_NUM_OUT[$name]=$count
+done
+
+unset col_num
+declare -A col_num
+count=0
+for i in $(head -n 1 $IVs_PURE); do
+count=$((count+1))
+col_num[$i]=$count
+done
+
 ##### 1) MATCH EXPOSURES SNPS WITH OUTCOME SNPS #####
 echo "#### 1) MATCH EXPOSURES SNPS WITH OUTCOME SNPS ####"
 1_MATCH_TO_CONSORTIA_BIOMARKERS(){
@@ -457,7 +292,7 @@ echo "#### 1) MATCH EXPOSURES SNPS WITH OUTCOME SNPS ####"
   OUTPUT_FILE=$3
   
   head -n 1 $EXPOSURES > $OUTPUT_FILE
-  awk 'BEGIN{FS=OFS="\t"} NR>1 {print $('${COL_NUM["chr"]}'), $('${COL_NUM["pos"]}'), $('${COL_NUM["other_allele"]}'), $('${COL_NUM["effect_allele"]}')}' $INPUT_FILE | sort -u | awk 'BEGIN{FS=OFS="\t"} NR==FNR {snp[$1,$2,$3,$4]=1;snp[$1,$2,$4,$3]=1;next}snp[$('${col_num["chr"]}'),$('${col_num["pos"]}'),$('${col_num["other_allele"]}'),$('${col_num["effect_allele"]}')]==1 && $('${COL_NUM_PURE["Phenotype"]}')=="'$POPULATION'""_""'$PANEL'""_""'$ASSAY'""_""'$GENE'"{$('${col_num["SNP"]}')=$('${col_num["chr"]}')"_"$('${col_num["pos"]}')"_"$('${col_num["other_allele"]}')"_"$('${col_num["effect_allele"]}'); print $0}' - $EXPOSURES >> $OUTPUT_FILE
+  awk 'BEGIN{FS=OFS="\t"} NR>1 {print $('${COL_NUM_OUT["chr"]}'), $('${COL_NUM_OUT["pos"]}'), $('${COL_NUM_OUT["other_allele"]}'), $('${COL_NUM_OUT["effect_allele"]}')}' $INPUT_FILE | sort -u | awk 'BEGIN{FS=OFS="\t"} NR==FNR {snp[$1,$2,$3,$4]=1;snp[$1,$2,$4,$3]=1;next}snp[$('${col_num["chr"]}'),$('${col_num["pos"]}'),$('${col_num["other_allele"]}'),$('${col_num["effect_allele"]}')]==1 && $('${COL_NUM_PURE["Phenotype"]}')=="'$POPULATION'""_""'$PANEL'""_""'$ASSAY'""_""'$GENE'"{$('${col_num["SNP"]}')=$('${col_num["chr"]}')"_"$('${col_num["pos"]}')"_"$('${col_num["other_allele"]}')"_"$('${col_num["effect_allele"]}'); print $0}' - $EXPOSURES >> $OUTPUT_FILE
 }
 
 EXPOSURES=$IVs_PURE
@@ -487,15 +322,16 @@ echo "#### 2) PERFORM CLUMPING ####"
   count=0
 
   # phenotype=$(awk 'BEGIN {FS=OFS="\t"}NR>1{print $('${col_num["Phenotype"]}')}' $INPUT_FILE | sort -u | head -n 1)
-  # phenotype="AFRICAN_CMET_CFHR5_CFHR5"
+  # phenotype="PERSIAN_CVDII_PRSS2_PRSS2"
+  # phenotype="AFRICAN_CVDII_ANG_ANG"
   for phenotype in $(awk 'BEGIN {FS=OFS="\t"}NR>1{print $('${col_num["Phenotype"]}')}' $INPUT_FILE | sort -u); do
     count=$((count+1))
 
     echo "########## $phenotype $count/$(awk 'BEGIN {FS=OFS="\t"}NR>1{print $('${col_num["Phenotype"]}')}' $INPUT_FILE | sort -u | wc -l) ##########"
     
-    awk 'BEGIN {FS=OFS="\t"} NR>1 && $('${col_num["Phenotype"]}')=="'$phenotype'"{print}' $INPUT_FILE > ${OUTPUT_FILE}_temp_input.extract
+    awk 'BEGIN {FS=OFS="\t"} NR>1 && $('${col_num["Phenotype"]}')=="'$phenotype'"{print}' $INPUT_FILE | sort -u > ${OUTPUT_FILE}_${phenotype}_temp_input.extract
     
-    chr=$(awk '{print $('${col_num["chr"]}')}' ${OUTPUT_FILE}_temp_input.extract | sort -u)
+    chr=$(awk '{print $('${col_num["chr"]}')}' ${OUTPUT_FILE}_${phenotype}_temp_input.extract | sort -u)
     
     POPULATION=$(echo $phenotype | sed 's/'_${PANEL}\.*'//g')
     
@@ -535,34 +371,35 @@ echo "#### 2) PERFORM CLUMPING ####"
       PURE_GENO_DIR=/genetics/PAREG/perrotn/PURE/IMPUTED_GENOTYPES_TOPMED_HG19/${POP}/
       PURE_input=${PURE_GENO_DIR}${chr}.IMP_QC_HG19
 
-      # awk 'BEGIN{FS=OFS="\t"}{print "chr"$3":"$4":"$5":"$6;print "chr"$3":"$4":"$6":"$5}' ${OUTPUT_FILE}_temp_input.extract | grep -wf - "${PURE_input}".bim | awk 'BEGIN{FS=OFS="\t"} NR==FNR {snp[$1,$4,$5,$6]=1;snp[$1,$4,$6,$5]=1;next}snp[$3,$4,$5,$6]==1{print}' - ${OUTPUT_FILE}_temp_input.extract > ${OUTPUT_FILE}_temp_input.extract_temp
-      awk 'BEGIN{FS=OFS="\t"}{print "chr"$3":"$4":"$5":"$6;print "chr"$3":"$4":"$6":"$5}' ${OUTPUT_FILE}_temp_input.extract | awk 'BEGIN{FS=OFS="\t"}NR==FNR{SNP[$1]=1;next}SNP[$2]==1{print $0}' - "${PURE_input}".bim | awk 'BEGIN{FS=OFS="\t"} NR==FNR {snp[$1,$4,$5,$6]=1;snp[$1,$4,$6,$5]=1;next}snp[$3,$4,$5,$6]==1{print}' - ${OUTPUT_FILE}_temp_input.extract > ${OUTPUT_FILE}_temp_input.extract_temp
-      mv ${OUTPUT_FILE}_temp_input.extract_temp ${OUTPUT_FILE}_temp_input.extract
+      # awk 'BEGIN{FS=OFS="\t"}{print "chr"$3":"$4":"$5":"$6;print "chr"$3":"$4":"$6":"$5}' ${OUTPUT_FILE}_${phenotype}_temp_input.extract | grep -wf - "${PURE_input}".bim | awk 'BEGIN{FS=OFS="\t"} NR==FNR {snp[$1,$4,$5,$6]=1;snp[$1,$4,$6,$5]=1;next}snp[$3,$4,$5,$6]==1{print}' - ${OUTPUT_FILE}_${phenotype}_temp_input.extract > ${OUTPUT_FILE}_${phenotype}_temp_input.extract_temp
+      awk 'BEGIN{FS=OFS="\t"}{print "chr"$3":"$4":"$5":"$6;print "chr"$3":"$4":"$6":"$5}' ${OUTPUT_FILE}_${phenotype}_temp_input.extract | awk 'BEGIN{FS=OFS="\t"}NR==FNR{SNP[$1]=1;next}SNP[$2]==1{print $0}' - "${PURE_input}".bim | awk 'BEGIN{FS=OFS="\t"} NR==FNR {snp[$1,$4,$5,$6]=1;snp[$1,$4,$6,$5]=1;next}snp[$3,$4,$5,$6]==1{print}' - ${OUTPUT_FILE}_${phenotype}_temp_input.extract > ${OUTPUT_FILE}_${phenotype}_temp_input.extract_temp
+      mv ${OUTPUT_FILE}_${phenotype}_temp_input.extract_temp ${OUTPUT_FILE}_${phenotype}_temp_input.extract
 
-      # awk 'BEGIN{FS=OFS="\t"}{print $1, $4, $5, $6}' "${PURE_input}".bim | awk 'BEGIN{FS=OFS="\t"} NR==FNR {snp[$1,$2,$3,$4]=1;snp[$1,$2,$4,$3]=1;next}snp[$3,$4,$5,$6]==1{print}' - ${OUTPUT_FILE}_temp_input.extract > ${OUTPUT_FILE}_temp_input.extract_temp
-      # mv ${OUTPUT_FILE}_temp_input.extract_temp ${OUTPUT_FILE}_temp_input.extract
+      # awk 'BEGIN{FS=OFS="\t"}{print $1, $4, $5, $6}' "${PURE_input}".bim | awk 'BEGIN{FS=OFS="\t"} NR==FNR {snp[$1,$2,$3,$4]=1;snp[$1,$2,$4,$3]=1;next}snp[$3,$4,$5,$6]==1{print}' - ${OUTPUT_FILE}_${phenotype}_temp_input.extract > ${OUTPUT_FILE}_${phenotype}_temp_input.extract_temp
+      # mv ${OUTPUT_FILE}_${phenotype}_temp_input.extract_temp ${OUTPUT_FILE}_${phenotype}_temp_input.extract
 
     done # END POP LOOP
 
-      if [ $(awk 'BEGIN{FS=OFS="\t"}{print}' ${OUTPUT_FILE}_temp_input.extract | wc -l) -eq 0 ]; then
+    if [ $(awk 'BEGIN{FS=OFS="\t"}{print}' ${OUTPUT_FILE}_${phenotype}_temp_input.extract | wc -l) -eq 0 ]; then
       echo "###################################"
       echo "######### NO SNPS REMAINS #########"
       echo "###################################"
+      rm -f ${OUTPUT_FILE}_${phenotype}_temp_input.extract
       continue
     fi
 
-    awk 'BEGIN {FS=OFS="\t"} ((length($('${col_num["other_allele"]}'))+length($('${col_num["effect_allele"]}'))==2) && $('${col_num["chr"]}')=="'$chr'") {print "chr"$('${col_num["chr"]}')":" $('${col_num["pos"]}') ":" $('${col_num["effect_allele"]}') ":" $('${col_num["other_allele"]}');print "chr" $('${col_num["chr"]}')":" $('${col_num["pos"]}') ":" $('${col_num["other_allele"]}') ":" $('${col_num["effect_allele"]}')}' ${OUTPUT_FILE}_temp_input.extract | sort -gk 2 > ${OUTPUT_FILE}_temp.ids
-    awk 'BEGIN {FS=OFS="\t"} ((length($('${col_num["other_allele"]}'))+length($('${col_num["effect_allele"]}'))==2) && $('${col_num["chr"]}')=="'$chr'") {print "chr" $('${col_num["chr"]}') ":" $('${col_num["pos"]}') ":" $('${col_num["effect_allele"]}') ":" $('${col_num["other_allele"]}'), $0;print "chr" $('${col_num["chr"]}') ":" $('${col_num["pos"]}') ":" $('${col_num["other_allele"]}') ":" $('${col_num["effect_allele"]}'), $0}' ${OUTPUT_FILE}_temp_input.extract | sort -gk 4,4 > ${OUTPUT_FILE}_temp.input
+    awk 'BEGIN {FS=OFS="\t"} ((length($('${col_num["other_allele"]}'))+length($('${col_num["effect_allele"]}'))==2) && $('${col_num["chr"]}')=="'$chr'") {print "chr"$('${col_num["chr"]}')":" $('${col_num["pos"]}') ":" $('${col_num["effect_allele"]}') ":" $('${col_num["other_allele"]}');print "chr" $('${col_num["chr"]}')":" $('${col_num["pos"]}') ":" $('${col_num["other_allele"]}') ":" $('${col_num["effect_allele"]}')}' ${OUTPUT_FILE}_${phenotype}_temp_input.extract | sort -gk 2 > ${OUTPUT_FILE}_${phenotype}_temp.ids
+    awk 'BEGIN {FS=OFS="\t"} ((length($('${col_num["other_allele"]}'))+length($('${col_num["effect_allele"]}'))==2) && $('${col_num["chr"]}')=="'$chr'") {print "chr" $('${col_num["chr"]}') ":" $('${col_num["pos"]}') ":" $('${col_num["effect_allele"]}') ":" $('${col_num["other_allele"]}'), $0;print "chr" $('${col_num["chr"]}') ":" $('${col_num["pos"]}') ":" $('${col_num["other_allele"]}') ":" $('${col_num["effect_allele"]}'), $0}' ${OUTPUT_FILE}_${phenotype}_temp_input.extract | sort -gk 4,4 > ${OUTPUT_FILE}_${phenotype}_temp.input
     
     
-    if [ $(wc -l ${OUTPUT_FILE}_temp.ids | awk '{print $1}') -eq 2 ]; then # ONLY 1 SNP
+    if [ $(wc -l ${OUTPUT_FILE}_${phenotype}_temp.ids | awk '{print $1}') -eq 2 ]; then # ONLY 1 SNP
     
-      grep -wf ${OUTPUT_FILE}_temp.ids ${OUTPUT_FILE}_temp.input | head -n1 | cut -d$'\t' -f 2- >> ${OUTPUT_FILE}
+      grep -wf ${OUTPUT_FILE}_${phenotype}_temp.ids ${OUTPUT_FILE}_${phenotype}_temp.input | head -n1 | cut -d$'\t' -f 2- >> ${OUTPUT_FILE}
     
     else
 
     # TEST
-    # POP="AFRICAN"
+    # POP="EUROPEAN"
     for POP in ${LIST_POP[@]}; do
       echo "######################################"
       echo "########### --CLUMP" $POP "###########"
@@ -571,59 +408,118 @@ echo "#### 2) PERFORM CLUMPING ####"
       PURE_GENO_DIR=/genetics/PAREG/perrotn/PURE/IMPUTED_GENOTYPES_TOPMED_HG19/${POP}/
       PURE_input=${PURE_GENO_DIR}${chr}.IMP_QC_HG19
 
-      echo "" | awk 'BEGIN{FS=OFS="\t"}{print "SNP", "P"}' - > ${OUTPUT_FILE}_temp.assoc
-      awk 'BEGIN{FS=OFS="\t"}{print $1, $('$((COL_NUM["pval"]+1))')}' ${OUTPUT_FILE}_temp.input >> ${OUTPUT_FILE}_temp.assoc
+      echo "" | awk 'BEGIN{FS=OFS="\t"}{print "SNP", "P"}' - > ${OUTPUT_FILE}_${phenotype}_temp.assoc
+      # awk 'BEGIN{FS=OFS="\t"}{print $1, $11}' ${OUTPUT_FILE}_${phenotype}_temp.input >> ${OUTPUT_FILE}_${phenotype}_temp.assoc
+      cut -d$'\t' -f 2- ${OUTPUT_FILE}_${phenotype}_temp.input | awk 'BEGIN{FS=OFS="\t"}NR==FNR{SNP[$('${col_num["SNP"]}')]=1;PVAL[$('${col_num["SNP"]}')]=$('${col_num["pval"]}');next}SNP[$3]==1{print $1, PVAL[$3]}' - ${OUTPUT_FILE}_${phenotype}_temp.input >> ${OUTPUT_FILE}_${phenotype}_temp.assoc
 
       $plink2 \
       --bfile $PURE_input \
       --keep /genetics/PAREG/common/PURE_DATA/GENOTYPING/PURE_PMRA_COMBINED_2020_01_06.FINAL.fam \
-      --extract ${OUTPUT_FILE}_temp.ids \
-      --clump ${OUTPUT_FILE}_temp.assoc \
+      --extract ${OUTPUT_FILE}_${phenotype}_temp.ids \
+      --clump ${OUTPUT_FILE}_${phenotype}_temp.assoc \
       --clump-p1 "$PVALUE_THRESHOLD" \
       --clump-p2 "$PVALUE_THRESHOLD" \
       --clump-r2 "$LD_THRESHOLD_PRUNING" \
       --clump-kb 1000 \
-      --out ${OUTPUT_FILE}_temp.clumped
+      --out ${OUTPUT_FILE}_${phenotype}_temp.clumped
 
-      if [ -f ${OUTPUT_FILE}_temp.clumped.clumped ]
+      if [ -f ${OUTPUT_FILE}_${phenotype}_temp.clumped.clumped ]
       then
-        # update ${OUTPUT_FILE}_temp.ids, ${OUTPUT_FILE}_temp.input
-        awk 'BEGIN{FS=" ";OFS="\t"}NR>1 && $3!="" {print $3}' ${OUTPUT_FILE}_temp.clumped.clumped | grep -wf - ${OUTPUT_FILE}_temp.ids > ${OUTPUT_FILE}_temp.ids_temp
-        mv ${OUTPUT_FILE}_temp.ids_temp ${OUTPUT_FILE}_temp.ids
+        # update ${OUTPUT_FILE}_${phenotype}_temp.ids, ${OUTPUT_FILE}_${phenotype}_temp.input
+        awk 'BEGIN{FS=" ";OFS="\t"}NR>1 && $3!="" {print $3}' ${OUTPUT_FILE}_${phenotype}_temp.clumped.clumped | grep -wf - ${OUTPUT_FILE}_${phenotype}_temp.ids > ${OUTPUT_FILE}_${phenotype}_temp.ids_temp
+        mv ${OUTPUT_FILE}_${phenotype}_temp.ids_temp ${OUTPUT_FILE}_${phenotype}_temp.ids
 
-        awk 'BEGIN{FS=" ";OFS="\t"}NR>1 && $3!="" {print $3}' ${OUTPUT_FILE}_temp.clumped.clumped | grep -wf - ${OUTPUT_FILE}_temp.input > ${OUTPUT_FILE}_temp.input_temp
-        mv ${OUTPUT_FILE}_temp.input_temp ${OUTPUT_FILE}_temp.input
+        awk 'BEGIN{FS=" ";OFS="\t"}NR>1 && $3!="" {print $3}' ${OUTPUT_FILE}_${phenotype}_temp.clumped.clumped | grep -wf - ${OUTPUT_FILE}_${phenotype}_temp.input > ${OUTPUT_FILE}_${phenotype}_temp.input_temp
+        mv ${OUTPUT_FILE}_${phenotype}_temp.input_temp ${OUTPUT_FILE}_${phenotype}_temp.input
 
-        if [ $(wc -l ${OUTPUT_FILE}_temp.ids | awk '{print $1}') -eq 1 ]; then # ONLY 1 SNP
+        if [ $(wc -l ${OUTPUT_FILE}_${phenotype}_temp.ids | awk '{print $1}') -eq 1 ]; then # ONLY 1 SNP
           break
         fi
       else
-        > ${OUTPUT_FILE}_temp.ids
+        > ${OUTPUT_FILE}_${phenotype}_temp.ids
         break
       fi
     done # END POP LOOP
 
-      if [ $(wc -l ${OUTPUT_FILE}_temp.ids | awk '{print $1}' - ) -eq 1 ]; then # ONLY 1 SNP
-        grep -wf ${OUTPUT_FILE}_temp.ids ${OUTPUT_FILE}_temp.input | head -n1 | cut -d$'\t' -f 2- >> ${OUTPUT_FILE}
-        rm ${OUTPUT_FILE}_temp*
+      if [ $(wc -l ${OUTPUT_FILE}_${phenotype}_temp.ids | awk '{print $1}' - ) -eq 1 ]; then # ONLY 1 SNP
+        grep -wf ${OUTPUT_FILE}_${phenotype}_temp.ids ${OUTPUT_FILE}_${phenotype}_temp.input | head -n1 | cut -d$'\t' -f 2- >> ${OUTPUT_FILE}
+        rm ${OUTPUT_FILE}_${phenotype}_temp*
         continue
       fi
       
-      if [ $(wc -l ${OUTPUT_FILE}_temp.ids | awk '{print $1}' - ) -eq 0 ]; then
+      if [ $(wc -l ${OUTPUT_FILE}_${phenotype}_temp.ids | awk '{print $1}' - ) -eq 0 ]; then
         echo "NO SNPS REMAINS"
-        rm ${OUTPUT_FILE}_temp*
+        rm ${OUTPUT_FILE}_${phenotype}_temp*
         continue
       fi
 
-      grep -wf ${OUTPUT_FILE}_temp.ids ${OUTPUT_FILE}_temp.input | cut -d$'\t' -f 2- >> ${OUTPUT_FILE}
-      rm ${OUTPUT_FILE}_temp*
+      # grep -wf ${OUTPUT_FILE}_${phenotype}_temp.ids ${OUTPUT_FILE}_${phenotype}_temp.input | cut -d$'\t' -f 2- >> ${OUTPUT_FILE}
+      # rm ${OUTPUT_FILE}_${phenotype}_temp*
+
+      rm -f ${OUTPUT_FILE}_${phenotype}_temp.r2
+      # # TEST
+      # # POP="AFRICAN"
+      for POP in ${LIST_POP[@]}; do
+        echo "###################################"
+        echo "########### --R2" $POP "###########"
+        echo "###################################" 
+        PURE_GENO_DIR=/genetics/PAREG/perrotn/PURE/IMPUTED_GENOTYPES_TOPMED_HG19/${POP}/
+        PURE_input=${PURE_GENO_DIR}${chr}.IMP_QC_HG19
+        
+        # remove existing file
+        rm -f ${OUTPUT_FILE}_${phenotype}_temp.ids.*
+
+        # generate genotyping file with --keep
+        $plink2 --bfile $PURE_input \
+        --keep /genetics/PAREG/common/PURE_DATA/GENOTYPING/PURE_PMRA_COMBINED_2020_01_06.FINAL.fam \
+        --extract ${OUTPUT_FILE}_${phenotype}_temp.ids \
+        --make-bed \
+        --out ${OUTPUT_FILE}_${phenotype}_temp.ids
+
+        # generate r2 matrix
+        $plink2 \
+        --bfile ${OUTPUT_FILE}_${phenotype}_temp.ids \
+        --r2 yes-really inter-chr \
+        --ld-window-r2 0 \
+        --out ${OUTPUT_FILE}_${phenotype}_temp.r2
+
+        if [ ! -s ${OUTPUT_FILE}_${phenotype}_temp.r2.ld ]; then
+          echo "ERROR" ${OUTPUT_FILE}_${phenotype}_temp.r2.ld "DOES NO EXISTS"
+          echo "phenotype:" $phenotype
+          echo "POP:" $POP
+          exit 1
+        fi
+
+        awk 'BEGIN{OFS="\t"}NR>1{print}' ${OUTPUT_FILE}_${phenotype}_temp.r2.ld >> ${OUTPUT_FILE}_${phenotype}_temp.r2
+        
+      done # END POP LOOP
+      
+      awk 'BEGIN{OFS="\t"}NR>1{print $3; print $6}' ${OUTPUT_FILE}_${phenotype}_temp.r2 | sort -u | grep -wf - ${OUTPUT_FILE}_${phenotype}_temp.input > ${OUTPUT_FILE}_${phenotype}_temp
+      mv ${OUTPUT_FILE}_${phenotype}_temp ${OUTPUT_FILE}_${phenotype}_temp.input
+      
+      
+      until [[ ! -s "${OUTPUT_FILE}_${phenotype}_temp.input" ]] ; do
+      var=$(awk 'NR==1{print $1}'  ${OUTPUT_FILE}_${phenotype}_temp.input)
+      # Find proxy SNPs based on r2 LD_THRESHOLD_PRUNING
+      grep -w $var ${OUTPUT_FILE}_${phenotype}_temp.r2 | awk 'BEGIN {OFS="\t"}$3=="'$var'"{if ($NF>='${LD_THRESHOLD_PRUNING}')print $6}$6=="'$var'"{if ($NF>='${LD_THRESHOLD_PRUNING}')print $3}' | sort -u | grep -w -v $var > ${OUTPUT_FILE}_${phenotype}_temp_input.proxy_SNPS
+      grep -w -v -f ${OUTPUT_FILE}_${phenotype}_temp_input.proxy_SNPS ${OUTPUT_FILE}_${phenotype}_temp.r2 > ${OUTPUT_FILE}_${phenotype}_temp
+      mv ${OUTPUT_FILE}_${phenotype}_temp ${OUTPUT_FILE}_${phenotype}_temp.r2
+      # Output query variant to final file
+      awk 'BEGIN{FS=OFS="\t"}{print}' ${OUTPUT_FILE}_${phenotype}_temp.input | grep -w $var - | cut -d$'\t' -f 2- >> ${OUTPUT_FILE}
+      # Remove query variant from SNP info file
+      # awk 'NR>1' ${OUTPUT_FILE}_${phenotype}_temp.input > ${OUTPUT_FILE}_${phenotype}_temp # Remove first variant (query)=
+      grep -w -v $var ${OUTPUT_FILE}_${phenotype}_temp.input > ${OUTPUT_FILE}_${phenotype}_temp
+      # Remove proxy SNPs from SNP info file
+      grep -w -v -f ${OUTPUT_FILE}_${phenotype}_temp_input.proxy_SNPS ${OUTPUT_FILE}_${phenotype}_temp > ${OUTPUT_FILE}_${phenotype}_temp.input # Remove variants that are in LD.
+      done
 
     fi # END IF 1 SNP
     
-    rm -f ${OUTPUT_FILE}_temp*
+    rm -f ${OUTPUT_FILE}_${phenotype}_temp*
       
   done # phenotype loop
 }
+
 
 INPUT_FILE=${OUTPUT_DIR}1_MATCH_TO_CONSORTIA/EXPOSURE.MATCHED_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
 OUTPUT_FILE=${OUTPUT_DIR}2_LD_PRUNE/EXPOSURE.LD_PRUNED_${LD_THRESHOLD_PRUNING}_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
@@ -639,7 +535,7 @@ echo "#### 3) EXTRACT OUTCOME SUMMARY STATISTICS ####"
   OUTPUT_FILE=$3
   head -n 1 $OUTCOME > $OUTPUT_FILE
   
-  awk 'BEGIN{FS=OFS="\t"} NR>1 {print $('${col_num["chr"]}'), $('${col_num["pos"]}'), $('${col_num["other_allele"]}'), $('${col_num["effect_allele"]}')}' $EXPOSURE | sort -u | awk 'BEGIN{FS=OFS="\t"} NR==FNR {snp[$1,$2,$3,$4]=1;snp[$1,$2,$4,$3]=1;next}snp[$('${COL_NUM["chr"]}'),$('${COL_NUM["pos"]}'),$('${COL_NUM["other_allele"]}'),$('${COL_NUM["effect_allele"]}')]==1' - $OUTCOME >> $OUTPUT_FILE
+  awk 'BEGIN{FS=OFS="\t"} NR>1 {print $('${col_num["chr"]}'), $('${col_num["pos"]}'), $('${col_num["other_allele"]}'), $('${col_num["effect_allele"]}')}' $EXPOSURE | sort -u | awk 'BEGIN{FS=OFS="\t"} NR==FNR {snp[$1,$2,$3,$4]=1;snp[$1,$2,$4,$3]=1;next}snp[$('${COL_NUM_OUT["chr"]}'),$('${COL_NUM_OUT["pos"]}'),$('${COL_NUM_OUT["other_allele"]}'),$('${COL_NUM_OUT["effect_allele"]}')]==1' - $OUTCOME >> $OUTPUT_FILE
 }
 
 EXPOSURE=${OUTPUT_DIR}2_LD_PRUNE/EXPOSURE.LD_PRUNED_${LD_THRESHOLD_PRUNING}_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
@@ -660,7 +556,7 @@ echo "#### 4) EXTRACT EXPOSURES ####"
 }
 
 EXPOSURE=${OUTPUT_DIR}2_LD_PRUNE/EXPOSURE.LD_PRUNED_${LD_THRESHOLD_PRUNING}_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
-EXPOSURES=${OUTPUT_DIR}EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
+EXPOSURES=${BIOMARKER_EXPOSURES_DIR}/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
 OUTPUT_FILE=${OUTPUT_DIR}4_EXTRACT_EXPOSURES/EXPOSURES.LD_PRUNED_${LD_THRESHOLD_PRUNING}_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}
 4_EXTRACT_EXPOSURES $EXPOSURE $EXPOSURES $OUTPUT_FILE
 
@@ -676,7 +572,7 @@ ROOT_DIR=$7
 GRS_FORMATING_FILE=$8
 OUTCOME=$9
 LIST_EXPOSURE_MODEL=${10}
-
+MODEL=${11}
 
 echo "SCRIPT:" $SCRIPT
 echo "CIS_WINDOW:" $CIS_WINDOW
@@ -689,9 +585,9 @@ echo "GRS_FORMATING_FILE:" $GRS_FORMATING_FILE
 echo "OUTCOME:" $OUTCOME
 echo "LIST_EXPOSURE_MODEL:" $LIST_EXPOSURE_MODEL
 
+# rm -f ALREADY EXISTS
 
-python /genetics/PAREG/perrotn/scripts/combinations_MVMR.py --file $LIST_EXPOSURE_MODEL
-
+# python /genetics/PAREG/perrotn/scripts/combinations_MVMR.py --file $LIST_EXPOSURE_MODEL
 
 export TMPDIR=${ROOT_DIR}tmp
 
@@ -791,6 +687,8 @@ cd ${ROOT_DIR}PURE/MVMR_consortia/
 
 script_log=$(mktemp script_log.XXXXXX)
 
+N_CPU=$(nproc)
+
 for SUFFIX in NO_MHC_MISSENSE_SPLICING # NO_MHC NO_MHC_MISSENSE NO_MHC_SPLICING
 do
 
@@ -799,28 +697,18 @@ do
   OUTPUT_DIR=${ROOT_OUTPUT_DIR}${OUTCOME}/
   mkdir -p $OUTPUT_DIR
 
-  for PVALUE_THRESHOLD in 0.000005 0.01 0.001 0.0001 0.00001 0.000001 0.0000001 0.00000001 0.00000005
+  for PVALUE_THRESHOLD in 0.01 # 0.000005  0.001 0.0001 0.00001 0.000001 0.0000001 0.00000001 0.00000005
   do
-    for POPULATION in EUROPEAN METAL_LATIN_EUROPEAN_PERSIAN
+    for POPULATION in EUROPEAN # METAL_LATIN_EUROPEAN_PERSIAN
     do
-      MODEL=0
-      for EXPOSURES_FILE in $(ls $(echo $LIST_EXPOSURE_MODEL | sed 's/.txt/_*/' -))
-      do
-        count=0
-        for ROW in $(eval "echo {1..$(wc -l $EXPOSURES_FILE | awk '{print $1}' -)}")
-        do
-          MODEL=$((MODEL+1))
           rm -f ${OUTPUT_DIR}OUTCOME_FORMATTING_FOR_MRBASE/OUTCOME_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}* \
-          ${OUTPUT_DIR}EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}* \
+          ${OUTPUT_DIR}EXPOSURES_FORMATTING_FOR_MRBASE/EXPOSURES_MODEL_MRBASE.FORMAT_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}* \
           ${OUTPUT_DIR}1_MATCH_TO_CONSORTIA/EXPOSURE.MATCHED_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_LD_PRUNED_${LD_THRESHOLD_PRUNING}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}* \
           ${OUTPUT_DIR}2_LD_PRUNE/EXPOSURE.LD_PRUNED_${LD_THRESHOLD_PRUNING}_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}* \
           ${OUTPUT_DIR}3_EXTRACT_OUTCOME/OUTCOME.LD_PRUNED_${LD_THRESHOLD_PRUNING}_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}* \
           ${OUTPUT_DIR}4_EXTRACT_EXPOSURES/EXPOSURES.LD_PRUNED_${LD_THRESHOLD_PRUNING}_${POPULATION}_${PANEL}_${ASSAY}_${GENE}_CIS_${CIS_WINDOW}_PVALUE_${PVALUE_THRESHOLD}_${MODEL}*
           
-          RUN_PARALLEL 0.95 0.95 288 8 "$script_log" "$SCRIPT" $SUFFIX $PANEL $ASSAY $GENE $EXPOSURES_FILE $ROW $PVALUE_THRESHOLD $CIS_WINDOW $LD_THRESHOLD_PRUNING $OUTCOME $ROOT_DIR $GRS_FORMATING_FILE $MODEL $POPULATION
-
-        done # END ROW LOOP
-      done # END EXPOSURES_FILE LOOP
+          RUN_PARALLEL 0.95 0.95 ${N_CPU} 8 "$script_log" "$SCRIPT" $SUFFIX $PANEL $ASSAY $GENE $LIST_EXPOSURE_MODEL $PVALUE_THRESHOLD $CIS_WINDOW $LD_THRESHOLD_PRUNING $OUTCOME $ROOT_DIR $GRS_FORMATING_FILE $MODEL $POPULATION
     done # END POPULATION LOOP
   done # END PVALUE_THRESHOLD LOOP
 done # END SUFFIX LOOP
@@ -855,14 +743,21 @@ PANEL="CMET"
 ASSAY="F11"
 GENE="F11"
 ROOT_DIR="/storage/genetics_work2/perrotn/"
-OUTCOME="PARENTAL_LIFESPAN_LIFEGEN_2017"
-LIST_EXPOSURE_MODEL="/storage/genetics_work2/perrotn/PURE/MVMR_consortia/F11_MVMR.txt"
-# LIST_EXPOSURE_MODEL="/storage/genetics_work2/perrotn/PURE/MVMR_consortia/TEST_FILE_MVMR.txt"
+# OUTCOME="ischemic_stroke_european_GIGASTROKE_2022"
+OUTCOME="all_stroke_european_GIGASTROKE_2022"
+# LIST_EXPOSURE_MODEL="/storage/genetics_work2/perrotn/PURE/MVMR_consortia/FXI_CES_VS_ISCHEMIC_STROKE.txt" # HEADER: "exposures"
+# MODEL="FXI_CES_VS_ISCHEMIC_STROKE"
+
+LIST_EXPOSURE_MODEL="/storage/genetics_work2/perrotn/PURE/MVMR_consortia/FXI_ISCHEMIC_STROKE_VS_ALL_STROKE.txt" # HEADER: "exposures"
+MODEL="FXI_ISCHEMIC_STROKE_VS_ALL_STROKE"
+
+# LIST_EXPOSURE_MODEL="/storage/genetics_work2/perrotn/PURE/MVMR_consortia/test_FXI_ISCHEMIC_STROKE_VS_ISCHEMIC_STROKE.txt" # HEADER: "exposures"
+# MODEL="test_FXI_ISCHEMIC_STROKE_VS_ISCHEMIC_STROKE"
 
 awk 'BEGIN{FS=OFS="\t"}{print}' "$LIST_EXPOSURE_MODEL" | tr -d '\r' > "${LIST_EXPOSURE_MODEL}"temp
 mv "${LIST_EXPOSURE_MODEL}"temp "$LIST_EXPOSURE_MODEL"
 
-rm $(echo $(echo $LIST_EXPOSURE_MODEL | sed 's/'.txt'/_/')[0-9]*)
+# rm $(echo $(echo $LIST_EXPOSURE_MODEL | sed 's/'.txt'/_/')[0-9]*)
 
 nohup bash /genetics/PAREG/perrotn/scripts/IVs_MVMR_PURE_parallel.sh \
 $SCRIPT \
@@ -875,12 +770,15 @@ $ROOT_DIR \
 ${ROOT_DIR}PURE/MVMR_consortia/${GRS_FORMATING_FILE} \
 $OUTCOME \
 $LIST_EXPOSURE_MODEL \
+$MODEL \
 > /genetics/PAREG/perrotn/scripts/output_nohup/IVs_MVMR_PURE_parallel.out &
 ########################################################################################################################################
 # in progress xxxxx
 
 # kill $(ps -aux | grep "IVs_MVMR_PURE_parallel.sh" | awk '{print $2}' -)
 # kill $(ps -aux | grep "IVs_MVMR_PURE.sh" | awk '{print $2}' -)
+
+/storage/genetics_work2/perrotn/PURE/MVMR_consortia/NO_MHC_MISSENSE_SPLICING/all_stroke_european_GIGASTROKE_2022/
 
 grep -ci "error" /genetics/PAREG/perrotn/scripts/output_nohup/IVs_MVMR_PURE_parallel.out
 grep -i "fail" /genetics/PAREG/perrotn/scripts/output_nohup/IVs_MVMR_PURE_parallel.out |  grep -cv "after larger attempt(s) failed" - 

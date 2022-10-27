@@ -1,3 +1,2 @@
 exposures
 cardioembolic_stroke_european_GIGASTROKE_2022
-ESUS_CCSc_EUR_SiGN_2019
